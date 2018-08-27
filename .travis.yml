@@ -2,12 +2,10 @@ language: elixir
 elixir:
   - 1.6.5
 otp_release:
-  - 21.0.5
+  - 20.3.8
 services:
   - rabbitmq
 before_script:
-  - mix local.mix
-  - mix local.rebar
   - MIX_ENV=test mix deps.get
   - MIX_ENV=test mix deps.compile
   - MIX_ENV=test mix compile
