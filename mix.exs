@@ -26,7 +26,7 @@ defmodule YggdrasilRabbitmq.MixProject do
 
   defp deps do
     [
-      {:yggdrasil, git: "https://github.com/gmtprime/yggdrasil.git", branch: "4.0.0"},
+      {:yggdrasil, "~> 4.0"},
       {:poolboy, "~> 1.5"},
       {:amqp, "~> 1.0"},
       {:connection, "~> 1.0"},
