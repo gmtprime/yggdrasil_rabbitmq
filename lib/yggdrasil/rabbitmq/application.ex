@@ -1,6 +1,8 @@
 defmodule Yggdrasil.RabbitMQ.Application do
   @moduledoc """
-  Module that defines Yggdrasil with RabbitMQ support.
+  [![Build Status](https://travis-ci.org/gmtprime/yggdrasil_rabbitmq.svg?branch=master)](https://travis-ci.org/gmtprime/yggdrasil_rabbitmq) [![Hex pm](http://img.shields.io/hexpm/v/yggdrasil_rabbitmq.svg?style=flat)](https://hex.pm/packages/yggdrasil_rabbitmq) [![hex.pm downloads](https://img.shields.io/hexpm/dt/yggdrasil_rabbitmq.svg?style=flat)](https://hex.pm/packages/yggdrasil_rabbitmq)
+
+  This project is a RabbitMQ adapter for `Yggdrasil` publisher/subscriber.
 
   ![demo](https://raw.githubusercontent.com/gmtprime/yggdrasil_rabbitmq/master/images/demo.gif)
 
@@ -44,7 +46,8 @@ defmodule Yggdrasil.RabbitMQ.Application do
     it defaults to `:default`, but `:json` can also be used.
     * Any `backend` can be used (by default is `:default`).
 
-  The following is a valid channel for both publishers and subscribers:
+  The following is an example of a valid channel for both publishers and
+  subscribers:
 
   ```elixir
   %Yggdrasil.Channel{
@@ -98,6 +101,17 @@ defmodule Yggdrasil.RabbitMQ.Application do
   where `<NAMESPACE>` is the snakecase of the namespace chosen e.g. for the
   namespace `RabbitmqTwo`, you would use `RABBITMQ_TWO` as namespace in the OS
   environment variable.
+
+  ## Installation
+
+  Using this RabbitMQ adapter with `Yggdrasil` is a matter of adding the
+  available hex package to your `mix.exs` file e.g:
+
+  ```elixir
+  def deps do
+    [{:yggdrasil_rabbitmq, "~> 4.0"}]
+  end
+  ```
   """
   use Application
 

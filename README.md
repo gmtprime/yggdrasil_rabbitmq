@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/gmtprime/yggdrasil_rabbitmq.svg?branch=master)](https://travis-ci.org/gmtprime/yggdrasil_rabbitmq) [![Hex pm](http://img.shields.io/hexpm/v/yggdrasil_rabbitmq.svg?style=flat)](https://hex.pm/packages/yggdrasil_rabbitmq) [![hex.pm downloads](https://img.shields.io/hexpm/dt/yggdrasil_rabbitmq.svg?style=flat)](https://hex.pm/packages/yggdrasil_rabbitmq)
 
-This project is a RabbitMQ adapter for `Yggdrasil` pub/sub.
+This project is a RabbitMQ adapter for `Yggdrasil` publisher/subscriber.
 
 ![demo](https://raw.githubusercontent.com/gmtprime/yggdrasil_rabbitmq/master/images/demo.gif)
 
@@ -46,7 +46,8 @@ The RabbitMQ adapter has the following rules:
   it defaults to `:default`, but `:json` can also be used.
   * Any `backend` can be used (by default is `:default`).
 
-The following is a valid channel for both publishers and subscribers:
+The following is an example of a valid channel for both publishers and
+subscribers:
 
 ```elixir
 %Yggdrasil.Channel{
