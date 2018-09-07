@@ -109,7 +109,7 @@ defmodule Yggdrasil.RabbitMQ.Application do
 
   ```elixir
   def deps do
-    [{:yggdrasil_rabbitmq, "~> 4.0"}]
+    [{:yggdrasil_rabbitmq, "~> 4.1"}]
   end
   ```
   """

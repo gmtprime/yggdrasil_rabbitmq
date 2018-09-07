@@ -45,24 +45,24 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
 
   alias Yggdrasil.Channel
   alias Yggdrasil.Subscriber.Publisher
-  alias Yggdrasil.Backend
+  alias Yggdrasil.Subscriber.Manager
   alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator
   alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection, as: Conn
 
   alias AMQP.Queue
   alias AMQP.Basic
 
-  defstruct [:publisher, :channel, :chan, :queue]
+  defstruct [:channel, :chan, :queue]
   alias __MODULE__, as: State
 
   ############
   # Client API
 
   @impl true
-  def start_link(channel, publisher, options \\ [])
+  def start_link(channel, options \\ [])
 
-  def start_link(%Channel{} = channel, publisher, options) do
-    arguments = %{publisher: publisher, channel: channel}
+  def start_link(%Channel{} = channel, options) do
+    arguments = %{channel: channel}
     Connection.start_link(__MODULE__, arguments, options)
   end
 
@@ -96,7 +96,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
     info,
     %State{chan: chan, channel: %Channel{} = channel} = state
   ) do
-    Backend.disconnected(channel)
+    Manager.disconnected(channel)
     if Process.alive?(chan.pid) do
       Generator.close_channel(chan)
     end
@@ -110,18 +110,16 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   def handle_info(
     {:basic_deliver, message, info},
     %State{
-      publisher: publisher,
+      channel: channel,
       chan: chan
     } = state
   ) do
     %{delivery_tag: tag,
-      redelivered: redelivered,
-      exchange: exchange,
-      routing_key: routing_key
+      redelivered: redelivered
      } = info
     try do
       :ok = AMQP.Basic.ack(chan, tag)
-      Publisher.notify(publisher, {exchange, routing_key}, message)
+      Publisher.notify(channel, message)
     rescue
       _ ->
         :ok = AMQP.Basic.reject(chan, tag, requeue: not redelivered)
@@ -149,7 +147,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
     reason,
     %State{chan: chan, channel: %Channel{} = channel} = state
   ) do
-    Backend.disconnected(channel)
+    Manager.disconnected(channel)
     if Process.alive?(chan.pid) do
       Generator.close_channel(chan)
     end
@@ -172,7 +170,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
         Logger.debug(fn ->
           "#{__MODULE__} connected to RabbitMQ #{inspect channel}"
         end)
-        Backend.connected(channel)
+        Manager.connected(channel)
         {:ok, new_state}
       else
         error ->
