@@ -4,8 +4,6 @@
 
 This project is a RabbitMQ adapter for `Yggdrasil` publisher/subscriber.
 
-![demo](https://raw.githubusercontent.com/gmtprime/yggdrasil_rabbitmq/master/images/demo.gif)
-
 ## Small example
 
 The following example uses RabbitMQ adapter to distribute messages:
