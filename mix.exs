@@ -1,7 +1,7 @@
 defmodule YggdrasilRabbitmq.MixProject do
   use Mix.Project
 
-  @version "4.1.0"
+  @version "4.1.1"
   @root "https://github.com/gmtprime/yggdrasil_rabbitmq"
 
   def project do
@@ -45,7 +45,7 @@ defmodule YggdrasilRabbitmq.MixProject do
   defp package do
     [
       description: "RabbitMQ adapter for Yggdrasil (pub/sub)",
-      files: ["lib", "mix.exs", "images", "README.md"],
+      files: ["lib", "mix.exs", "README.md"],
       maintainers: ["Alexander de Sousa"],
       licenses: ["MIT"],
       links: %{
