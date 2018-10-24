@@ -4,10 +4,9 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator do
   """
   use DynamicSupervisor
 
-  alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Pool
-  alias Yggdrasil.Settings
-
   alias AMQP.Channel
+  alias Yggdrasil.Settings
+  alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Pool
 
   @registry Settings.yggdrasil_process_registry()
 

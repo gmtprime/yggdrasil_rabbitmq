@@ -120,7 +120,8 @@ defmodule Yggdrasil.RabbitMQ.Application do
     children = [
       Supervisor.child_spec({Yggdrasil.Adapter.RabbitMQ, []}, []),
       Supervisor.child_spec(
-        { Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator,
+        {
+          Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator,
           [name: Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator]
         },
         type: :supervisor

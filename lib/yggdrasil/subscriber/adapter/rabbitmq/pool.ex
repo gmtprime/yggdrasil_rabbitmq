@@ -4,9 +4,9 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ.Pool do
   """
   use Supervisor
 
-  alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection, as: Conn
   alias Yggdrasil.Settings, as: GlobalSettings
   alias Yggdrasil.Settings.RabbitMQ, as: Settings
+  alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection, as: Conn
 
   @registry GlobalSettings.yggdrasil_process_registry()
 

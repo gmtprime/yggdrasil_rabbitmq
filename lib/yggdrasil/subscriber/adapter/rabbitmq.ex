@@ -43,14 +43,13 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
 
   require Logger
 
-  alias Yggdrasil.Channel
-  alias Yggdrasil.Subscriber.Publisher
-  alias Yggdrasil.Subscriber.Manager
-  alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator
-  alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection, as: Conn
-
-  alias AMQP.Queue
   alias AMQP.Basic
+  alias AMQP.Queue
+  alias Yggdrasil.Channel
+  alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection, as: Conn
+  alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator
+  alias Yggdrasil.Subscriber.Manager
+  alias Yggdrasil.Subscriber.Publisher
 
   defstruct [:channel, :chan, :queue]
   alias __MODULE__, as: State
@@ -107,23 +106,8 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   def handle_info({:basic_consume_ok, _}, %State{} = state) do
     {:noreply, state}
   end
-  def handle_info(
-    {:basic_deliver, message, info},
-    %State{
-      channel: channel,
-      chan: chan
-    } = state
-  ) do
-    %{delivery_tag: tag,
-      redelivered: redelivered
-     } = info
-    try do
-      :ok = AMQP.Basic.ack(chan, tag)
-      Publisher.notify(channel, message)
-    rescue
-      _ ->
-        :ok = AMQP.Basic.reject(chan, tag, requeue: not redelivered)
-    end
+  def handle_info({:basic_deliver, message, info}, %State{} = state) do
+    notify(message, info, state)
     {:noreply, state}
   end
   def handle_info({:basic_cancel, _}, %State{} = state) do
@@ -164,24 +148,22 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
 
   @doc false
   def connected(%State{channel: %Channel{} = channel} = state) do
-    try do
-      with {:ok, new_state} <- declare_queue(state),
-           :ok <- consume(new_state) do
-        Logger.debug(fn ->
-          "#{__MODULE__} connected to RabbitMQ #{inspect channel}"
-        end)
-        Manager.connected(channel)
-        {:ok, new_state}
-      else
-        error ->
-          backoff(error, state)
-      end
-    catch
-      :error, error ->
-        backoff({:error, error}, state)
-      error, reason ->
-        backoff({:error, {error, reason}}, state)
+    with {:ok, new_state} <- declare_queue(state),
+          :ok <- consume(new_state) do
+      Logger.debug(fn ->
+        "#{__MODULE__} connected to RabbitMQ #{inspect channel}"
+      end)
+      Manager.connected(channel)
+      {:ok, new_state}
+    else
+      error ->
+        backoff(error, state)
     end
+  catch
+    :error, error ->
+      backoff({:error, error}, state)
+    error, reason ->
+      backoff({:error, {error, reason}}, state)
   end
 
   @doc false
@@ -250,6 +232,22 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
     end
     new_state = %State{state | chan: nil}
     backoff(error, new_state)
+  end
+
+  @doc false
+  def notify(
+    message,
+    %{delivery_tag: tag, redelivered: redelivered},
+    %State{channel: channel, chan: chan}
+  ) do
+    :ok = Basic.ack(chan, tag)
+    Publisher.notify(channel, message)
+  rescue
+    _ ->
+    Basic.reject(chan, tag, requeue: not redelivered)
+  end
+  def notify(_, _, _) do
+    :ok
   end
 
   @doc false

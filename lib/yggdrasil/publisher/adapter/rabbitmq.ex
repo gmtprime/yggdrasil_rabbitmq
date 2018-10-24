@@ -43,9 +43,10 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
 
   require Logger
 
+  alias AMQP.Basic
   alias Yggdrasil.Channel
-  alias Yggdrasil.Transformer
   alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection, as: Conn
+  alias Yggdrasil.Transformer
 
   defstruct [:conn, :chan, :namespace]
   alias __MODULE__, as: State
@@ -165,8 +166,9 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
     %State{chan: chan} = state
   ) do
     result =
-      with {:ok, encoded} <- Transformer.encode(channel, message),
-           do: AMQP.Basic.publish(chan, exchange, routing_key, encoded, options)
+      with {:ok, encoded} <- Transformer.encode(channel, message) do
+        Basic.publish(chan, exchange, routing_key, encoded, options)
+      end
     {:reply, result, state}
   end
   def handle_call(_msg, _from, %State{} = state) do
