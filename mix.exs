@@ -1,7 +1,7 @@
 defmodule YggdrasilRabbitmq.MixProject do
   use Mix.Project
 
-  @version "4.1.1"
+  @version "4.1.2"
   @root "https://github.com/gmtprime/yggdrasil_rabbitmq"
 
   def project do
@@ -77,7 +77,10 @@ defmodule YggdrasilRabbitmq.MixProject do
         Yggdrasil.Adapter.RabbitMQ
       ],
       "Subscriber adapter": [
-        Yggdrasil.Subscriber.Adapter.RabbitMQ
+        Yggdrasil.Subscriber.Adapter.RabbitMQ,
+        Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection,
+        Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator,
+        Yggdrasil.Subscriber.Adapter.RabbitMQ.Pool
       ],
       "Publisher adapter": [
         Yggdrasil.Publisher.Adapter.RabbitMQ

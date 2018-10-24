@@ -67,6 +67,7 @@ defmodule Yggdrasil.RabbitMQ.Application do
     * `username` - RabbitMQ username (defaults to `"guest"`).
     * `password` - RabbitMQ password (defaults to `"guest"`).
     * `virtual_host` - Virtual host (defaults to `"/"`).
+    * `heartbeat` - Heartbeat of the connections (defaults to `10` seconds).
     * `subscriber_options` - Controls the amount of connections established with
     RabbitMQ. These are `poolboy` options for RabbitMQ subscriber (defaults to
     `[size: 5, max_overflow: 10]`).
@@ -95,6 +96,8 @@ defmodule Yggdrasil.RabbitMQ.Application do
     * `YGGDRASIL_RABBITMQ_PASSWORD` or `<NAMESPACE>_YGGDRASIL_RABBITMQ_PASSWORD`.
     * `YGGDRASIL_RABBITMQ_VIRTUAL_HOST` or
     `<NAMESPACE>_YGGDRASIL_RABBITMQ_VIRTUAL_HOST`.
+    * `YGGDRASIL_RABBITMQ_HEARTBEAT` or
+    `<NAMESPACE>_YGGDRASIL_RABBITMQ_HEARTBEAT`.
 
   where `<NAMESPACE>` is the snakecase of the namespace chosen e.g. for the
   namespace `RabbitmqTwo`, you would use `RABBITMQ_TWO` as namespace in the OS

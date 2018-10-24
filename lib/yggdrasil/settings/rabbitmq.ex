@@ -123,6 +123,29 @@ defmodule Yggdrasil.Settings.RabbitMQ do
     domain: :rabbitmq
 
   @doc """
+  RabbitMQ heartbeat. Defaults to `10` seconds.
+
+  It looks for the value following this order:
+
+    1. The OS environment variable `$YGGDRASIL_RABBITMQ_HEARTBEAT`.
+    2. The configuration file.
+    3. The default value `10`.
+
+  If the heartbeat is defined using a namespace, then the name of the OS
+  variable should be `$<NAMESPACE>_YGGDRASIL_RABBITMQ_HEARTBEAT` where
+  `NAMESPACE` is the snake case version of the actual namespace e.g
+  `MyApp.Namespace` would be `MYAPP_NAMESPACE`.
+
+  ```
+  config :yggdrasil, <NAMESPACE>
+    rabbitmq: [heartbeat: 10]
+  ```
+  """
+  app_env :yggdrasil_rabbitmq_heartbeat, :yggdrasil, :heartbeat,
+    default: 10,
+    domain: :rabbitmq
+
+  @doc """
   RabbitMQ max retries for the backoff algorithm. Defaults to `12`.
 
   It looks for the value following this order.

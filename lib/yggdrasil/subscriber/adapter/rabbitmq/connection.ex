@@ -150,7 +150,8 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection do
      port: get_port(namespace),
      username: get_username(namespace),
      password: get_password(namespace),
-     virtual_host: get_virtual_host(namespace)]
+     virtual_host: get_virtual_host(namespace),
+     heartbeat: get_heartbeat(namespace)]
   end
 
   @doc false
@@ -201,6 +202,14 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection do
   end
   def get_virtual_host(namespace) do
     get_value(namespace, :virtual_host, Settings.yggdrasil_rabbitmq_virtual_host())
+  end
+
+  @doc false
+  def get_heartbeat(Yggdrasil) do
+    Settings.yggdrasil_rabbitmq_heartbeat()
+  end
+  def get_heartbeat(namespace) do
+    get_value(namespace, :heartbeat, Settings.yggdrasil_rabbitmq_heartbeat())
   end
 
   @doc false
