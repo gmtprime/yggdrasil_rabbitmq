@@ -13,7 +13,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQTest do
   alias Yggdrasil.Subscriber.Manager
   alias Yggdrasil.Subscriber.Publisher
 
-  @registry Settings.yggdrasil_process_registry()
+  @registry Settings.yggdrasil_process_registry!()
 
   test "distribute message" do
     routing = "t#{UUID.uuid4() |> :erlang.phash2() |> to_string()}"

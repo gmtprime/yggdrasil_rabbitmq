@@ -72,7 +72,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   def init(%{channel: %Channel{name: {_, _}} = channel} = arguments) do
     state = struct(State, arguments)
     Process.flag(:trap_exit, true)
-    Logger.debug(fn -> "Started #{__MODULE__} for #{inspect channel}" end)
+    Logger.debug(fn -> "Started #{__MODULE__} for #{inspect(channel)}" end)
     {:connect, :init, state}
   end
 
@@ -91,14 +91,17 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   def disconnect(_info, %State{chan: nil} = state) do
     disconnected(state)
   end
+
   def disconnect(
-    info,
-    %State{chan: chan, channel: %Channel{} = channel} = state
-  ) do
+        info,
+        %State{chan: chan, channel: %Channel{} = channel} = state
+      ) do
     Manager.disconnected(channel)
+
     if Process.alive?(chan.pid) do
       Generator.close_channel(chan)
     end
+
     disconnect(info, %State{state | chan: nil})
   end
 
@@ -106,19 +109,24 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   def handle_info({:basic_consume_ok, _}, %State{} = state) do
     {:noreply, state}
   end
+
   def handle_info({:basic_deliver, message, info}, %State{} = state) do
     notify(message, info, state)
     {:noreply, state}
   end
+
   def handle_info({:basic_cancel, _}, %State{} = state) do
     {:disconnect, :cancel, state}
   end
+
   def handle_info({:DOWN, _, _, pid, _}, %State{chan: %{pid: pid}} = state) do
     {:disconnect, :down, state}
   end
+
   def handle_info({:EXIT, _, pid}, %State{chan: %{pid: pid}} = state) do
     {:disconnect, :exit, state}
   end
+
   def handle_info(_, %State{} = state) do
     {:noreply, state}
   end
@@ -127,14 +135,17 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   def terminate(reason, %State{chan: nil} = state) do
     terminated(reason, state)
   end
+
   def terminate(
-    reason,
-    %State{chan: chan, channel: %Channel{} = channel} = state
-  ) do
+        reason,
+        %State{chan: chan, channel: %Channel{} = channel} = state
+      ) do
     Manager.disconnected(channel)
+
     if Process.alive?(chan.pid) do
       Generator.close_channel(chan)
     end
+
     terminate(reason, %State{state | chan: nil})
   end
 
@@ -149,10 +160,11 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   @doc false
   def connected(%State{channel: %Channel{} = channel} = state) do
     with {:ok, new_state} <- declare_queue(state),
-          :ok <- consume(new_state) do
+         :ok <- consume(new_state) do
       Logger.debug(fn ->
-        "#{__MODULE__} connected to RabbitMQ #{inspect channel}"
+        "#{__MODULE__} connected to RabbitMQ #{inspect(channel)}"
       end)
+
       Manager.connected(channel)
       {:ok, new_state}
     else
@@ -162,24 +174,27 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   catch
     :error, error ->
       backoff({:error, error}, state)
+
     error, reason ->
       backoff({:error, {error, reason}}, state)
   end
 
   @doc false
   def open_channel(
-    %State{channel: %Channel{namespace: namespace}, chan: nil} = state
-  ) do
+        %State{channel: %Channel{namespace: namespace}, chan: nil} = state
+      ) do
     with {:ok, chan} <- Generator.open_channel(namespace) do
       _ = Process.monitor(chan.pid)
       new_state = %State{state | chan: chan}
       {:ok, new_state}
     end
   end
+
   def open_channel(%State{chan: chan} = state) do
     if Process.alive?(chan.pid) do
       Generator.close_channel(chan)
     end
+
     open_channel(%State{state | chan: nil})
   end
 
@@ -192,13 +207,11 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   end
 
   @doc false
-  def consume(
-    %State{
-      chan: chan,
-      queue: queue,
-      channel: %Channel{name: {exchange, routing_key}}
-    }
-  ) do
+  def consume(%State{
+        chan: chan,
+        queue: queue,
+        channel: %Channel{name: {exchange, routing_key}}
+      }) do
     with :ok <- Queue.bind(chan, queue, exchange, routing_key: routing_key),
          {:ok, _} <- Basic.consume(chan, queue) do
       :ok
@@ -207,45 +220,51 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
 
   @doc false
   def backoff(
-    {:backoff, new_backoff},
-    %State{chan: nil, channel: %Channel{} = channel} = state
-  ) do
+        {:backoff, new_backoff},
+        %State{chan: nil, channel: %Channel{} = channel} = state
+      ) do
     Logger.warn(fn ->
-      "#{__MODULE__} cannot connect to RabbitMQ for #{inspect channel}" <>
-      " waiting backoff of #{inspect new_backoff} ms"
+      "#{__MODULE__} cannot connect to RabbitMQ for #{inspect(channel)}" <>
+        " waiting backoff of #{inspect(new_backoff)} ms"
     end)
+
     {:backoff, new_backoff, state}
   end
+
   def backoff(
-    error,
-    %State{chan: nil, channel: %Channel{} = channel} = state
-  ) do
+        error,
+        %State{chan: nil, channel: %Channel{} = channel} = state
+      ) do
     Logger.warn(fn ->
-      "#{__MODULE__} cannot connect to RabbitMQ for #{inspect channel}" <>
-      " due to #{inspect error}"
+      "#{__MODULE__} cannot connect to RabbitMQ for #{inspect(channel)}" <>
+        " due to #{inspect(error)}"
     end)
+
     {:backoff, 5_000, state}
   end
+
   def backoff(error, %State{chan: chan} = state) do
     if Process.alive?(chan.pid) do
       Generator.close_channel(chan)
     end
+
     new_state = %State{state | chan: nil}
     backoff(error, new_state)
   end
 
   @doc false
   def notify(
-    message,
-    %{delivery_tag: tag, redelivered: redelivered},
-    %State{channel: channel, chan: chan}
-  ) do
+        message,
+        %{delivery_tag: tag, redelivered: redelivered},
+        %State{channel: channel, chan: chan}
+      ) do
     :ok = Basic.ack(chan, tag)
     Publisher.notify(channel, message)
   rescue
     _ ->
-    Basic.reject(chan, tag, requeue: not redelivered)
+      Basic.reject(chan, tag, requeue: not redelivered)
   end
+
   def notify(_, _, _) do
     :ok
   end
@@ -253,20 +272,22 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   @doc false
   def disconnected(%State{channel: %Channel{} = channel} = state) do
     Logger.warn(fn ->
-      "#{__MODULE__} disconnected from RabbitMQ #{inspect channel}"
+      "#{__MODULE__} disconnected from RabbitMQ #{inspect(channel)}"
     end)
+
     {:backoff, 5_000, state}
   end
 
   @doc false
   def terminated(:normal, %State{channel: %Channel{} = channel}) do
     Logger.debug(fn ->
-      "Stopped #{__MODULE__} for #{inspect channel}"
+      "Stopped #{__MODULE__} for #{inspect(channel)}"
     end)
   end
+
   def terminated(reason, %State{channel: %Channel{} = channel}) do
     Logger.warn(fn ->
-      "Stopped #{__MODULE__} for #{inspect channel} due to #{inspect reason}"
+      "Stopped #{__MODULE__} for #{inspect(channel)} due to #{inspect(reason)}"
     end)
   end
 end

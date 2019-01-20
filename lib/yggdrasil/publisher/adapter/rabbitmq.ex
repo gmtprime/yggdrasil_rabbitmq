@@ -83,9 +83,9 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
   by `AMQP.Basic.publish/5` in its fifth argument.
   """
   @spec publish(GenServer.server(), Channel.t(), term()) ::
-    :ok | {:error, term()}
+          :ok | {:error, term()}
   @spec publish(GenServer.server(), Channel.t(), term(), Keyword.t()) ::
-    :ok | {:error, term()}
+          :ok | {:error, term()}
   @impl true
   def publish(publisher, channel, message, options \\ [])
 
@@ -107,6 +107,7 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
   @impl true
   def connect(_info, %State{namespace: namespace} = state) do
     options = Conn.rabbitmq_options(namespace)
+
     try do
       with {:ok, conn} <- AMQP.Connection.open(options),
            {:ok, chan} <- AMQP.Channel.open(conn) do
@@ -124,16 +125,19 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
   defp backoff(error, %State{namespace: namespace} = state) do
     Logger.warn(fn ->
       "#{__MODULE__} cannot connect to RabbitMQ for #{namespace}" <>
-      "due to #{inspect error}"
+        "due to #{inspect(error)}"
     end)
+
     {:backoff, 5000, state}
   end
 
   defp connected(conn, chan, %State{namespace: namespace} = state) do
     Process.monitor(conn.pid)
+
     Logger.debug(fn ->
       "#{__MODULE__} connected to RabbitMQ for #{namespace}"
     end)
+
     {:ok, %State{state | conn: conn, chan: chan}}
   end
 
@@ -141,6 +145,7 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
   def disconnect(_info, %State{conn: nil} = state) do
     disconnected(state)
   end
+
   def disconnect(info, %State{conn: conn} = state) do
     AMQP.Connection.close(conn)
     disconnect(info, %State{state | conn: nil, chan: nil})
@@ -150,6 +155,7 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
     Logger.warn(fn ->
       "#{__MODULE__} disconnected from RabbitMQ for #{namespace}"
     end)
+
     {:backoff, 5000, state}
   end
 
@@ -157,20 +163,21 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
   def handle_call({:publish, _, _, _}, _from, %State{chan: nil} = state) do
     {:reply, {:error, "Disconnected"}, state}
   end
+
   def handle_call(
-    {:publish,
-     %Channel{name: {exchange, routing_key}} = channel,
-     message,
-     options},
-    _from,
-    %State{chan: chan} = state
-  ) do
+        {:publish, %Channel{name: {exchange, routing_key}} = channel, message,
+         options},
+        _from,
+        %State{chan: chan} = state
+      ) do
     result =
       with {:ok, encoded} <- Transformer.encode(channel, message) do
         Basic.publish(chan, exchange, routing_key, encoded, options)
       end
+
     {:reply, result, state}
   end
+
   def handle_call(_msg, _from, %State{} = state) do
     {:noreply, state}
   end
@@ -180,6 +187,7 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
     new_state = %State{state | conn: nil, chan: nil}
     {:disconnect, :down, new_state}
   end
+
   def handle_info({:EXIT, _, _}, %State{} = state) do
     new_state = %State{state | conn: nil, chan: nil}
     {:disconnect, :exit, new_state}
@@ -189,6 +197,7 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
   def terminate(reason, %State{conn: nil} = state) do
     terminated(reason, state)
   end
+
   def terminate(reason, %State{conn: conn} = state) do
     AMQP.Connection.close(conn)
     terminate(reason, %State{state | conn: nil, chan: nil})
@@ -196,12 +205,13 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
 
   defp terminated(:normal, %State{namespace: namespace} = _state) do
     Logger.debug(fn ->
-      "Stopped #{__MODULE__} for #{inspect namespace}"
+      "Stopped #{__MODULE__} for #{inspect(namespace)}"
     end)
   end
+
   defp terminated(reason, %State{namespace: namespace} = _state) do
     Logger.warn(fn ->
-      "Stopped #{__MODULE__} for #{inspect namespace} due to #{inspect reason}"
+      "Stopped #{__MODULE__} for #{inspect(namespace)} due to #{inspect(reason)}"
     end)
   end
 end

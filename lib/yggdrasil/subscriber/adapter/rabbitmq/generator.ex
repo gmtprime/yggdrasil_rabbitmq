@@ -8,7 +8,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator do
   alias Yggdrasil.Settings
   alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Pool
 
-  @registry Settings.yggdrasil_process_registry()
+  @registry Settings.yggdrasil_process_registry!()
 
   ############
   # Client API
@@ -32,6 +32,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator do
         _, _ -> :ok
       end
     end
+
     Supervisor.stop(generator)
   end
 
@@ -45,15 +46,19 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator do
   @doc false
   def connect(generator, namespace) do
     name = {Pool, namespace}
+
     case @registry.whereis_name(name) do
       :undefined ->
         via_tuple = {:via, @registry, name}
+
         spec = %{
           id: via_tuple,
           start: {Pool, :start_link, [namespace, [name: via_tuple]]},
           restart: :transient
         }
+
         DynamicSupervisor.start_child(generator, spec)
+
       pid ->
         {:ok, pid}
     end

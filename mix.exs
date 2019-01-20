@@ -1,7 +1,7 @@
 defmodule YggdrasilRabbitmq.MixProject do
   use Mix.Project
 
-  @version "4.1.2"
+  @version "4.1.3"
   @root "https://github.com/gmtprime/yggdrasil_rabbitmq"
 
   def project do
@@ -31,11 +31,11 @@ defmodule YggdrasilRabbitmq.MixProject do
     [
       {:yggdrasil, "~> 4.1"},
       {:poolboy, "~> 1.5"},
-      {:amqp, "~> 1.0"},
+      {:amqp, "~> 1.1"},
       {:connection, "~> 1.0"},
       {:uuid, "~> 1.1", only: [:dev, :test]},
       {:ex_doc, "~> 0.18.4", only: :dev},
-      {:credo, "~> 0.10", only: :dev}
+      {:credo, "~> 1.0", only: :dev}
     ]
   end
 
@@ -69,10 +69,10 @@ defmodule YggdrasilRabbitmq.MixProject do
 
   defp groups_for_modules do
     [
-      "Application": [
+      Application: [
         Yggdrasil.RabbitMQ.Application
       ],
-      "Adapter": [
+      Adapter: [
         Yggdrasil.Settings.RabbitMQ,
         Yggdrasil.Adapter.RabbitMQ
       ],

@@ -8,7 +8,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ.Pool do
   alias Yggdrasil.Settings.RabbitMQ, as: Settings
   alias Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection, as: Conn
 
-  @registry GlobalSettings.yggdrasil_process_registry()
+  @registry GlobalSettings.yggdrasil_process_registry!()
 
   ############
   # Client API
@@ -39,6 +39,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ.Pool do
   """
   def get_connection(namespace) do
     via_tuple = {:via, @registry, {RabbitMQ.Poolboy, namespace}}
+
     :poolboy.transaction(via_tuple, fn worker ->
       Conn.get_connection(worker)
     end)
@@ -53,7 +54,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ.Pool do
 
     poolargs =
       namespace
-      |> subscriber_options()
+      |> Settings.yggdrasil_rabbitmq_subscriber_options!()
       |> Keyword.put(:name, via_tuple)
       |> Keyword.put(:worker_module, Conn)
 
@@ -65,19 +66,5 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ.Pool do
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
-  end
-
-  #########
-  # Helpers
-
-  @doc false
-  def subscriber_options(Yggdrasil) do
-    Settings.yggdrasil_rabbitmq_subscriber_options()
-  end
-  def subscriber_options(namespace) do
-    Skogsra.get_app_env(:yggdrasil, :subscriber_options,
-      domain: [namespace, :rabbitmq],
-      default: Settings.yggdrasil_rabbitmq_subscriber_options()
-    )
   end
 end
