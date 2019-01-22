@@ -34,9 +34,11 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQTest do
     {:ok, conn} = Connection.open(options)
     {:ok, chan} = AMQPChannel.open(conn)
     :ok = Basic.publish(chan, "amq.topic", routing, "message")
-    :ok = Connection.close(conn)
 
-    assert_receive {:Y_EVENT, ^channel, "message"}, 500
+    assert_receive {:Y_EVENT, %{metadata: metadata}, "message"}, 5000
+    assert is_map(metadata)
+
+    :ok = Connection.close(conn)
 
     assert :ok = Adapter.stop(adapter)
     assert_receive {:Y_DISCONNECTED, ^channel}, 500
