@@ -110,25 +110,33 @@ defmodule Yggdrasil.RabbitMQ.Application do
 
   ```elixir
   def deps do
-    [{:yggdrasil_rabbitmq, "~> 4.1"}]
+    [{:yggdrasil_rabbitmq, "~> 5.0"}]
   end
   ```
   """
   use Application
 
+  alias Yggdrasil.RabbitMQ.ChannelCache
+  alias Yggdrasil.RabbitMQ.ConnectionGenerator
+
   def start(_type, _args) do
     children = [
-      Supervisor.child_spec({Yggdrasil.Adapter.RabbitMQ, []}, []),
+      Supervisor.child_spec({ChannelCache, [name: ChannelCache]}, []),
       Supervisor.child_spec(
-        {
-          Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator,
-          [name: Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator]
-        },
+        {ConnectionGenerator, [name: ConnectionGenerator]},
         type: :supervisor
       )
+      # Supervisor.child_spec({Yggdrasil.Adapter.RabbitMQ, []}, []),
+      # Supervisor.child_spec(
+      #  {
+      #    Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator,
+      #    [name: Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator]
+      #  },
+      #  type: :supervisor
+      # )
     ]
 
-    opts = [strategy: :one_for_one, name: Yggdrasil.RabbitMQ.Supervisor]
+    opts = [strategy: :rest_for_one, name: Yggdrasil.RabbitMQ.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end

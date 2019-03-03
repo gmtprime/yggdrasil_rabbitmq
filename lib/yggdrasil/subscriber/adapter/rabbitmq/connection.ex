@@ -4,7 +4,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection do
   a process request a connection.
   """
   use Bitwise
-  use Connection
+  # use Connection
 
   require Logger
 

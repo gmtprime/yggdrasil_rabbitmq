@@ -39,7 +39,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   ```
   """
   use Yggdrasil.Subscriber.Adapter
-  use Connection
+  # use Connection
 
   require Logger
 

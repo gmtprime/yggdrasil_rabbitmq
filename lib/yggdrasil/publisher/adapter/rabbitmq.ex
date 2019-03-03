@@ -71,7 +71,7 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
   """
   @spec stop(GenServer.name()) :: :ok
   @spec stop(GenServer.name(), term()) :: :ok
-  @spec stop(GenServer.name(), term(), pos_integer() | :infinity) :: :ok
+  @spec stop(GenServer.name(), term(), pos_integer() | :infinity) :: :ok
   defdelegate stop(publisher, reason \\ :normal, timeout \\ :infinity),
     to: GenServer
 
@@ -90,82 +90,89 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
 
   ####################
   # GenServer callback
-
+  """
   @impl true
   def init(namespace) do
-    Process.flag(:trap_exit, true)
-    state = %Connection{namespace: namespace}
-    {:ok, state, {:continue, :connect}}
+  Process.flag(:trap_exit, true)
+  state = %Connection{namespace: namespace}
+  {:ok, state, {:continue, :connect}}
   end
 
   @impl true
   def handle_continue(:connect, %Connection{} = state) do
-    with {:ok, new_state} <- Connection.connect(state) do
-      {:noreply, new_state}
-    else
-      error ->
-        {:noreply, state, {:continue, {:backoff, error}}}
-    end
+  with {:ok, new_state} <- Connection.connect(state) do
+    {:noreply, new_state}
+  else
+    error ->
+      {:noreply, state, {:continue, {:backoff, error}}}
+  end
   end
 
   def handle_continue({:backoff, error}, %Connection{} = state) do
-    new_state = Connection.backoff(error, state)
-    {:noreply, new_state}
+  new_state = Connection.backoff(error, state)
+  {:noreply, new_state}
   end
 
-  def handle_continue({:disconnect, _}, %Connection{conn: nil, chan: nil} = state) do
-    {:noreply, state}
+  def handle_continue(
+      {:disconnect, _},
+      %Connection{conn: nil, chan: nil} = state
+    ) do
+  {:noreply, state}
   end
 
-  def handle_continue({:disconnect, reason}, %Connection{} = state) when reason != :normal do
-    new_state = Connection.disconnect(reason, state)
-    {:noreply, new_state, {:continue, {:backoff, reason}}}
+  def handle_continue({:disconnect, reason}, %Connection{} = state)
+    when reason != :normal do
+  new_state = Connection.disconnect(reason, state)
+  {:noreply, new_state, {:continue, {:backoff, reason}}}
   end
 
   @impl true
   def handle_call({:publish, _, _, _}, _from, %Connection{chan: nil} = state) do
-    {:reply, {:error, "Disconnected"}, state}
+  {:reply, {:error, "Disconnected"}, state}
   end
 
   def handle_call(
-        {:publish, %Channel{name: {exchange, routing_key}} = channel,
-         message, options},
-        _from,
-        %Connection{chan: chan} = state
-      ) do
-    result =
-      with {:ok, encoded} <- Transformer.encode(channel, message) do
-        Basic.publish(chan, exchange, routing_key, encoded, options)
-      end
+      {:publish, %Channel{name: {exchange, routing_key}} = channel, message,
+       options},
+      _from,
+      %Connection{chan: chan} = state
+    ) do
+  result =
+    with {:ok, encoded} <- Transformer.encode(channel, message) do
+      Basic.publish(chan, exchange, routing_key, encoded, options)
+    end
 
-    {:reply, result, state}
+  {:reply, result, state}
   end
 
   @impl true
   def handle_info({:timeout, continue}, %Connection{} = state) do
-    {:noreply, state, continue}
+  {:noreply, state, continue}
   end
 
-  def handle_info({:DOWN, _, :process, _, reason}, %Connection{} = state) when reason != :normal do
-    {:noreply, state, {:continue, {:disconnect, reason}}}
+  def handle_info({:DOWN, _, :process, _, reason}, %Connection{} = state)
+    when reason != :normal do
+  {:noreply, state, {:continue, {:disconnect, reason}}}
   end
 
-  def handle_info({:EXIT, _, reason}, %Connection{} = state) when reason != :normal do
-    {:noreply, state, {:continue, {:disconnect, reason}}}
+  def handle_info({:EXIT, _, reason}, %Connection{} = state)
+    when reason != :normal do
+  {:noreply, state, {:continue, {:disconnect, reason}}}
   end
 
   def handle_info(_, %Connection{} = state) do
-    {:noreply, state}
+  {:noreply, state}
   end
 
   @impl true
   def terminate(:normal, %Connection{} = state) do
-    Connection.disconnect(:normal, state)
-    :ok
+  Connection.disconnect(:normal, state)
+  :ok
   end
 
   def terminate(reason, %Connection{} = state) do
-    Connection.disconnect(reason, state)
-    :ok
+  Connection.disconnect(reason, state)
+  :ok
   end
+  """
 end
