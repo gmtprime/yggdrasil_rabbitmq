@@ -1,9 +1,10 @@
-defmodule Yggdrasil.RabbitMQ.ConnectionPool do
+defmodule Yggdrasil.RabbitMQ.Connection.Pool do
   @moduledoc """
   RabbitMQ connection pool.
   """
   use Supervisor
 
+  alias AMQP.Channel
   alias Yggdrasil.RabbitMQ.Connection
   alias Yggdrasil.Settings.RabbitMQ, as: Settings
 
@@ -14,11 +15,6 @@ defmodule Yggdrasil.RabbitMQ.ConnectionPool do
   """
   @type tag :: :subscriber | :publisher
 
-  @typedoc """
-  Namespace.
-  """
-  @type namespace :: atom()
-
   ############
   # Public API
 
@@ -26,40 +22,40 @@ defmodule Yggdrasil.RabbitMQ.ConnectionPool do
   Starts a connection pool using a `tag` and a `namespace` to identify it.
   Additionally, it receives `Supervisor` `options`.
   """
-  @spec start_link(tag(), namespace()) :: Supervisor.on_start()
-  @spec start_link(tag(), namespace(), Supervisor.options()) ::
+  @spec start_link(tag(), Connection.namespace()) :: Supervisor.on_start()
+  @spec start_link(tag(), Connection.namespace(), Supervisor.options()) ::
           Supervisor.on_start()
   def start_link(tag, namespace, options \\ [])
 
-  def start_link(:subscriber, namespace, options) do
-    Supervisor.start_link(__MODULE__, {:subscriber, namespace}, options)
-  end
-
-  def start_link(:publisher, namespace, options) do
-    Supervisor.start_link(__MODULE__, {:publisher, namespace}, options)
+  def start_link(tag, namespace, options) when tag in [:subscriber, :publisher] do
+    Supervisor.start_link(__MODULE__, {tag, namespace}, options)
   end
 
   @doc """
   Stops a RabbitMQ connection `pool`. Optionally, it receives a stop `reason`
   (defaults to `:normal`) and timeout (defaults to `:infinity`).
   """
+  @spec stop(Supervisor.supervisor()) :: :ok
+  @spec stop(Supervisor.supervisor(), term()) :: :ok
+  @spec stop(Supervisor.supervisor(), term(), :infinity | non_neg_integer()) ::
+          :ok
   defdelegate stop(pool, reason \\ :normal, timeout \\ :infinity),
     to: Supervisor
 
   @doc """
-  Gets the an open connection with a `tag` and a `namespace`.
+  Opens a channel for a `tag` and `namespace`.
   """
-  @spec get_connection(tag(), namespace()) :: {:ok, term()} | {:error, term()}
-  def get_connection(tag, namespace)
+  @spec open_channel(tag(), Connection.namespace()) ::
+          {:ok, Channel.t()} | {:error, term()}
+  def open_channel(tag, namespace)
 
-  def get_connection(:subscriber, namespace) do
-    name = gen_pool_name(:subscriber, namespace)
-    :poolboy.transaction(name, &Connection.get_connection(&1))
-  end
-
-  def get_connection(:publisher, namespace) do
-    name = gen_pool_name(:publisher, namespace)
-    :poolboy.transaction(name, &Connection.get_connection(&1))
+  def open_channel(tag, namespace) when tag in [:subscriber, :publisher] do
+    name = gen_pool_name(tag, namespace)
+    :poolboy.transaction(name, fn worker ->
+      with {:ok, conn} <- Connection.get(worker) do
+        Channel.open(conn)
+      end
+    end)
   end
 
   #####################
@@ -88,14 +84,14 @@ defmodule Yggdrasil.RabbitMQ.ConnectionPool do
   # Helpers
 
   @doc false
-  @spec gen_pool_name(tag(), namespace())
-          :: {:via, module(), {tag(), namespace()}}
+  @spec gen_pool_name(tag(), Connection.namespace())
+          :: {:via, module(), {tag(), Connection.namespace()}}
   def gen_pool_name(tag, namespace) do
     {:via, @registry, {tag, namespace}}
   end
 
   @doc false
-  @spec gen_pool_size(tag(), namespace()) :: pos_integer()
+  @spec gen_pool_size(tag(), Connection.namespace()) :: pos_integer()
   def gen_pool_size(:subscriber, namespace) do
     Settings.subscriber_connections!(namespace)
   end

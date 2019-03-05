@@ -4,8 +4,8 @@ defmodule Yggdrasil.RabbitMQ.ConnectionTest do
   alias Yggdrasil.RabbitMQ.Connection
 
   setup do
-    namespace = Unreachable
-    config = [rabbitmq: [hostname: "unreachable"]]
+    namespace = __MODULE__.Unreachable
+    config = [rabbitmq: [hostname: "unreachable", debug: true]]
     Application.put_env(:yggdrasil, namespace, config)
 
     {:ok, [namespace: namespace]}
@@ -13,8 +13,10 @@ defmodule Yggdrasil.RabbitMQ.ConnectionTest do
 
   describe "when RabbitMQ is unreachable" do
     setup %{namespace: namespace} do
+      assert :ok = Yggdrasil.subscribe(name: {Connection, namespace})
+      assert_receive {:Y_CONNECTED, _}
       assert {:ok, conn} = Connection.start_link(namespace)
-
+      assert_receive {:Y_EVENT, _, :backing_off}
       {:ok, [namespace: namespace, conn: conn]}
     end
 
@@ -57,15 +59,15 @@ defmodule Yggdrasil.RabbitMQ.ConnectionTest do
     end
   end
 
-  describe "get_connection/1" do
+  describe "get/1" do
     test "cannot get connection", %{namespace: namespace} do
       assert {:ok, conn} = Connection.start_link(namespace)
-      assert {:error, _} = Connection.get_connection(conn)
+      assert {:error, _} = Connection.get(conn)
     end
 
     test "when reachable, can get connection" do
       assert {:ok, conn} = Connection.start_link(nil)
-      assert {:ok, %AMQP.Connection{} = conn} = Connection.get_connection(conn)
+      assert {:ok, %AMQP.Connection{} = conn} = Connection.get(conn)
       assert is_pid(conn.pid) and Process.alive?(conn.pid)
     end
   end
@@ -114,8 +116,9 @@ defmodule Yggdrasil.RabbitMQ.ConnectionTest do
     end
 
     test "terminates the connection", %{state: %{conn: conn} = state} do
+      Process.monitor(conn.pid)
       assert %Connection{conn: nil} = Connection.disconnect(:error, state)
-      assert is_pid(conn.pid) and not Process.alive?(conn.pid)
+      assert_receive {:DOWN, _, _, _, _}
     end
   end
 end

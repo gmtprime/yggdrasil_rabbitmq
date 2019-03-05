@@ -111,4 +111,12 @@ defmodule Yggdrasil.Settings.RabbitMQ do
           :yggdrasil,
           [:rabbitmq, :subscriber_options],
           default: [size: 5, max_overflow: 10]
+
+  ################
+  # Debug settings
+
+  @envdoc """
+  Only for tests.
+  """
+  app_env :debug, :yggdrasil, [:rabbitmq, :debug], default: false
 end

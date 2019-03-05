@@ -10,6 +10,11 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   alias AMQP.Connection
   alias Yggdrasil.Settings.RabbitMQ, as: Settings
 
+  @typedoc """
+  Namespace for the connection.
+  """
+  @type namespace :: nil | atom()
+
   @doc false
   defstruct namespace: nil,
             conn: nil,
@@ -20,7 +25,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
 
   @typedoc false
   @type t :: %State{
-          namespace: namespace :: atom(),
+          namespace: namespace :: namespace(),
           conn: connection :: term(),
           retries: retries :: non_neg_integer(),
           backoff: backoff :: non_neg_integer()
@@ -33,8 +38,8 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   Starts a RabbitMQ connection with a `namespace` for the configuration.
   Additionally, you can add `GenServer` `options`.
   """
-  @spec start_link(term()) :: GenServer.on_start()
-  @spec start_link(term(), GenServer.options()) :: GenServer.on_start()
+  @spec start_link(namespace()) :: GenServer.on_start()
+  @spec start_link(namespace(), GenServer.options()) :: GenServer.on_start()
   @impl true
   def start_link(namespace, options \\ [])
 
@@ -48,17 +53,17 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   """
   @spec stop(GenServer.name()) :: :ok
   @spec stop(GenServer.name(), term()) :: :ok
-  @spec stop(GenServer.name(), term(), pos_integer() | :infinity) :: :ok
+  @spec stop(GenServer.name(), term(), :infinity | non_neg_integer()) :: :ok
   defdelegate stop(connection, reason \\ :normal, timeout \\ :infinity),
     to: GenServer
 
   @doc """
   Gets connection struct from a `connection` process.
   """
-  @spec get_connection(GenServer.name()) :: {:ok, term()} | {:error, term()}
-  def get_conection(connection)
+  @spec get(GenServer.name()) :: {:ok, term()} | {:error, term()}
+  def get(connection)
 
-  def get_connection(connection) do
+  def get(connection) do
     GenServer.call(connection, :get)
   end
 
@@ -220,15 +225,28 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   # Logging related helpers
 
   ##
+  # Sends a debug message.
+  @spec send_debug(term(), State.t()) :: :ok
+  defp send_debug(message, state)
+
+  defp send_debug(message, %State{namespace: namespace}) do
+    if Settings.debug!(namespace) do
+      Yggdrasil.publish([name: {__MODULE__, namespace}], message)
+    end
+  end
+
+  ##
   # Shows a message for a successful connection.
   @spec connected(State.t()) :: :ok
   defp connected(state)
 
-  defp connected(%State{namespace: nil}) do
+  defp connected(%State{namespace: nil} = state) do
+    send_debug(:connected, state)
     Logger.debug("#{__MODULE__} connected to RabbitMQ")
   end
 
-  defp connected(%State{namespace: namespace}) do
+  defp connected(%State{namespace: namespace} = state) do
+    send_debug(:connected, state)
     Logger.debug(
       "#{__MODULE__} connected to RabbitMQ using namespace #{namespace}"
     )
@@ -239,11 +257,15 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   @spec backing_off(term(), State.t()) :: :ok
   defp backing_off(error, state)
 
-  defp backing_off(error, %State{
-         namespace: nil,
-         retries: retries,
-         backoff: backoff
-       }) do
+  defp backing_off(
+         error,
+         %State{
+           namespace: nil,
+           retries: retries,
+           backoff: backoff
+         } = state
+       ) do
+    send_debug(:backing_off, state)
     Logger.warn(
       "#{__MODULE__} cannot connected to RabbitMQ" <>
         " with error #{inspect(error)}" <>
@@ -253,8 +275,13 @@ defmodule Yggdrasil.RabbitMQ.Connection do
 
   defp backing_off(
          error,
-         %State{namespace: namespace, retries: retries, backoff: backoff}
+         %State{
+           namespace: namespace,
+           retries: retries,
+           backoff: backoff
+         } = state
        ) do
+    send_debug(:backing_off, state)
     Logger.warn(
       "#{__MODULE__} cannot connected to RabbitMQ using #{namespace}" <>
         " with error #{inspect(error)}" <>
@@ -263,25 +290,29 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   end
 
   ##
-  # Shows a message on disconnection
+  # Shows a message on disconnection.
   @spec disconnected(term(), State.t()) :: :ok
   defp disconnected(reason, state)
 
-  defp disconnected(:normal, %State{namespace: nil}) do
+  defp disconnected(:normal, %State{namespace: nil} = state) do
+    send_debug(:disconnected, state)
     Logger.debug("#{__MODULE__} disconnected from RabbitMQ")
   end
 
-  defp disconnected(:normal, %State{namespace: namespace}) do
+  defp disconnected(:normal, %State{namespace: namespace} = state) do
+    send_debug(:disconnected, state)
     Logger.debug(
       "#{__MODULE__} disconnected from RabbitMQ using namespace #{namespace}"
     )
   end
 
-  defp disconnected(_, %State{namespace: nil}) do
+  defp disconnected(_, %State{namespace: nil} = state) do
+    send_debug(:disconnected, state)
     Logger.warn("#{__MODULE__} disconnected from RabbitMQ")
   end
 
-  defp disconnected(_, %State{namespace: namespace}) do
+  defp disconnected(_, %State{namespace: namespace} = state) do
+    send_debug(:disconnected, state)
     Logger.warn(
       "#{__MODULE__} disconnected from RabbitMQ using namespace #{namespace}"
     )

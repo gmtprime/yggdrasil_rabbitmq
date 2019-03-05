@@ -117,15 +117,12 @@ defmodule Yggdrasil.RabbitMQ.Application do
   use Application
 
   alias Yggdrasil.RabbitMQ.ChannelCache
-  alias Yggdrasil.RabbitMQ.ConnectionGenerator
+  alias Yggdrasil.RabbitMQ.Connection.Generator, as: ConnectionGen
 
   def start(_type, _args) do
     children = [
       Supervisor.child_spec({ChannelCache, [name: ChannelCache]}, []),
-      Supervisor.child_spec(
-        {ConnectionGenerator, [name: ConnectionGenerator]},
-        type: :supervisor
-      )
+      Supervisor.child_spec({ConnectionGen, [name: ConnectionGen]}, type: :supervisor)
       # Supervisor.child_spec({Yggdrasil.Adapter.RabbitMQ, []}, []),
       # Supervisor.child_spec(
       #  {
