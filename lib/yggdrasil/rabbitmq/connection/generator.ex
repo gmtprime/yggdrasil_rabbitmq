@@ -46,11 +46,8 @@ defmodule Yggdrasil.RabbitMQ.Connection.Generator do
   def open_channel(tag, namespace, options) do
     client = Keyword.get(options, :caller, self())
 
-    with {:error, _} <- ChannelCache.lookup(client, tag, namespace),
-         {:ok, _} <- connect(__MODULE__, tag, namespace),
-         {:ok, %Channel{} = channel} <- Pool.open_channel(tag, namespace),
-         :ok <- ChannelCache.insert(client, tag, namespace, channel) do
-      {:ok, channel}
+    with {:ok, _} <- connect(__MODULE__, tag, namespace) do
+      Pool.open_channel(client, tag, namespace)
     end
   end
 

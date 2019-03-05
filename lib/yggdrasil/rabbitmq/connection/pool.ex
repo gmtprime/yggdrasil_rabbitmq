@@ -5,6 +5,7 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
   use Supervisor
 
   alias AMQP.Channel
+  alias Yggdrasil.RabbitMQ.ChannelCache
   alias Yggdrasil.RabbitMQ.Connection
   alias Yggdrasil.Settings.RabbitMQ, as: Settings
 
@@ -43,43 +44,57 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
     to: Supervisor
 
   @doc """
-  Runs a `callback` with a channel for a `tag` and `namespace`
+  Runs a `callback` with a channel for a `tag` and `namespace` for a `caller`.
   """
   @spec with_rabbitmq(
+          caller :: pid(),
           tag :: tag(),
           namespace :: Connection.namespace()
         ) :: {:ok, term()} | {:error, term()}
   @spec with_rabbitmq(
+          caller :: pid(),
           tag :: tag(),
           namespace :: Connection.namespace(),
           callback :: (Channel.t() -> {:ok, term()} | {:error, term()})
         ) :: {:ok, term()} | {:error, term()}
-  def with_rabbitmq(tag, namespace, callback \\ &{:ok, &1})
+  def with_rabbitmq(caller, tag, namespace, callback \\ &{:ok, &1})
 
-  def with_rabbitmq(tag, namespace, callback) do
+  def with_rabbitmq(
+        caller,
+        tag,
+        namespace,
+        callback
+      ) when tag in [:subscriber, :publisher] do
     name = gen_pool_name(tag, namespace)
+
     :poolboy.transaction(name, fn worker ->
-      with {:ok, conn} <- Connection.get(worker),
-           {:ok, chan} <- Channel.open(conn) do
+      with {:error, _} <- ChannelCache.lookup(caller, tag, namespace),
+           {:ok, conn} <- Connection.get(worker),
+           {:ok, chan} <- Channel.open(conn),
+           :ok <- ChannelCache.insert(caller, tag, namespace, chan) do
         callback.(chan)
+      else
+        {:ok, %Channel{} = chan} ->
+          callback.(chan)
+        error ->
+          error
       end
     end)
   end
 
   @doc """
-  Opens a channel for a `tag` and `namespace`.
+  Opens a channel for a `tag` and `namespace` for a `caller`.
   """
-  @spec open_channel(tag(), Connection.namespace()) ::
+  @spec open_channel(pid(), tag(), Connection.namespace()) ::
           {:ok, Channel.t()} | {:error, term()}
-  def open_channel(tag, namespace)
+  def open_channel(caller, tag, namespace)
 
-  def open_channel(tag, namespace) when tag in [:subscriber, :publisher] do
-    name = gen_pool_name(tag, namespace)
-    :poolboy.transaction(name, fn worker ->
-      with {:ok, conn} <- Connection.get(worker) do
-        Channel.open(conn)
-      end
-    end)
+  def open_channel(
+        caller,
+        tag,
+        namespace
+      ) when tag in [:subscriber, :publisher] do
+    with_rabbitmq(caller, tag, namespace)
   end
 
   #####################
