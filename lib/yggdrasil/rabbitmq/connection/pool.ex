@@ -43,6 +43,30 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
     to: Supervisor
 
   @doc """
+  Runs a `callback` with a channel for a `tag` and `namespace`
+  """
+  @spec with_rabbitmq(
+          tag :: tag(),
+          namespace :: Connection.namespace()
+        ) :: {:ok, term()} | {:error, term()}
+  @spec with_rabbitmq(
+          tag :: tag(),
+          namespace :: Connection.namespace(),
+          callback :: (Channel.t() -> {:ok, term()} | {:error, term()})
+        ) :: {:ok, term()} | {:error, term()}
+  def with_rabbitmq(tag, namespace, callback \\ &{:ok, &1})
+
+  def with_rabbitmq(tag, namespace, callback) do
+    name = gen_pool_name(tag, namespace)
+    :poolboy.transaction(name, fn worker ->
+      with {:ok, conn} <- Connection.get(worker),
+           {:ok, chan} <- Channel.open(conn) do
+        callback.(chan)
+      end
+    end)
+  end
+
+  @doc """
   Opens a channel for a `tag` and `namespace`.
   """
   @spec open_channel(tag(), Connection.namespace()) ::
