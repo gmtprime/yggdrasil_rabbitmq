@@ -12,6 +12,9 @@ defmodule Yggdrasil.RabbitMQ.ChannelCache do
 
   @cache :yggdrasil_rabbitmq_channel_cache
 
+  @typedoc false
+  @type type :: {Pool.tag(), Connection.namespace()}
+
   ############
   # Public API
 
@@ -120,47 +123,16 @@ defmodule Yggdrasil.RabbitMQ.ChannelCache do
     :ok
   end
 
-  #####################
-  # GenServer callbacks
-
-  @impl true
-  def init(_) do
-    _ = Process.flag(:trap_exit, true)
-    opts = [:set, :public, :named_table, read_concurrency: true]
-    cache = :ets.new(@cache, opts)
-    {:ok, cache}
-  end
-
-  @impl true
-  def handle_call({:insert, {key, %Channel{pid: pid}} = pair}, _from, cache) do
-    _ = Process.monitor(pid)
-    :ets.insert(cache, pair)
-    :ets.insert(cache, {pid, key})
-    {:reply, :ok, cache}
-  end
-
-  @impl true
-  def handle_info({:DOWN, _, _, pid, _}, cache) do
-    case :ets.lookup(cache, pid) do
-      [] ->
-        {:noreply, cache}
-      [{^pid, key} | _] ->
-        :ets.delete(cache, pid)
-        :ets.delete(cache, key)
-        {:noreply, cache}
-    end
-  end
-
   #########
   # Helpers
 
-  @chan :rabbitmq_chan
+  @chan :chan
   @typedoc false
-  @type chan_key :: {:rabbitmq_chan, pid(), Pool.tag(), Connection.namespace()}
+  @type chan_key :: {:chan, pid(), Pool.tag(), Connection.namespace()}
 
-  @pid :rabbitmq_pid
+  @pid :pid
   @typedoc false
-  @type pid_key :: {:rabbitmq_pid, pid()}
+  @type pid_key :: {:pid, pid()}
 
   @doc false
   # Looks up a channel by `client` PID, `tag` and `namespace` in a `cache`.
@@ -198,7 +170,6 @@ defmodule Yggdrasil.RabbitMQ.ChannelCache do
       # On exit closes all channels.
       _ = Process.link(pid)
       chan_key = {@chan, client, tag, namespace}
-      :ets.insert(cache, {{@pid, client}, chan_key})
       :ets.insert(cache, {{@pid, pid}, chan_key})
       :ets.insert(cache, {chan_key, channel})
 
@@ -215,52 +186,49 @@ defmodule Yggdrasil.RabbitMQ.ChannelCache do
   # Deletes a channel-client relation.
   @spec do_delete(cache :: :ets.tab(), pid :: pid()) :: :ok
   def do_delete(cache, pid) when is_pid(pid) do
-    case :ets.lookup(cache, {@pid, pid}) do
-      [] ->
-        :ok
-
+    pid_key = {@pid, pid}
+    case :ets.lookup(cache, pid_key) do
       # Client died
-      [{{@pid, ^pid}, {@chan, ^pid, tag, namespace} = chan_key} | _] ->
-        Logger.debug(
-          "#{__MODULE__} closing #{inspect(tag)} channel for" <>
-            " namespace #{inspect(namespace)} and client #{inspect(pid)}"
-        )
-
-        do_delete_client(cache, chan_key)
+      [] ->
+        do_delete_client(cache, pid_key)
 
       # Channel died
-      [{{@pid, ^pid}, {@chan, client, tag, namespace} = chan_key} | _] ->
-        Logger.debug(
-          "#{__MODULE__} closing #{inspect(tag)} channel for" <>
-            " namespace #{inspect(namespace)} and client #{inspect(client)}"
-        )
-
-        do_delete_client(cache, chan_key, {@pid, pid})
+      [{^pid_key, {@chan, _, _, _} = chan_key} | _] ->
+        do_delete_channel(cache, chan_key, pid_key)
     end
   end
 
   @doc false
   # Deletes a channel-client relation. Closes the channel if the client is
   # dead.
-  @spec do_delete_client(:ets.tab(), chan_key()) :: :ok | no_return()
-  @spec do_delete_client(:ets.tab(), chan_key(), nil | pid_key()) ::
-          :ok | no_return()
-  def do_delete_client(cache, chan_key, client_pid_key \\ nil)
+  @spec do_delete_client(:ets.tab(), pid_key()) :: :ok | no_return()
+  def do_delete_client(cache, pid_key)
 
-  def do_delete_client(cache, {@chan, _, _, _} = chan_key, nil) do
-    with [{^chan_key, %Channel{pid: pid} = channel} | _] <-
-           :ets.lookup(cache, chan_key) do
+  def do_delete_client(cache, {@pid, client}) do
+    channels = :ets.match(cache, {{@chan, client, :"$1", :"$2"}, :"$3"})
+    for [tag, namespace, %Channel{pid: pid} = channel] <- channels do
+      Logger.debug("#{__MODULE__} closing channel #{inspect(channel)}")
       :ok = Channel.close(channel)
-      do_delete_client(cache, chan_key, {@pid, pid})
+      do_delete_channel(cache, {@chan, client, tag, namespace}, {@pid, pid})
     end
 
     :ok
   end
 
-  def do_delete_client(cache, {@chan, client, _, _} = chan_key, {@pid, pid}) do
+  @doc false
+  # Deletes a dead channel from a client.
+  @spec do_delete_channel(:ets.tab(), chan_key(), pid_key()) :: :ok
+  def do_delete_channel(
+        cache,
+        {@chan, client, tag, namespace} = chan_key,
+        {@pid, _} = pid_key
+      ) do
+    Logger.debug(
+      "#{__MODULE__} removing channel with tag #{inspect(tag)} and" <>
+      " namespace #{inspect(namespace)} for client #{inspect(client)}"
+    )
     :ets.delete(cache, chan_key)
-    :ets.delete(cache, {@pid, pid})
-    :ets.delete(cache, {@pid, client})
+    :ets.delete(cache, pid_key)
 
     :ok
   end
