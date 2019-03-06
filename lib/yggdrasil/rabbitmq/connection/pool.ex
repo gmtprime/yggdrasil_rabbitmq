@@ -9,6 +9,12 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
   alias Yggdrasil.RabbitMQ.Connection
   alias Yggdrasil.Settings.RabbitMQ, as: Settings
 
+  @typedoc """
+  Callback for running functions using RabbitMQ channels.
+  """
+  @type rabbit_callback ::
+          (Channel.t() -> :ok | {:ok, term()} | {:error, term()})
+
   @registry Yggdrasil.Settings.yggdrasil_process_registry!()
 
   @typedoc """
@@ -44,22 +50,14 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
     to: Supervisor
 
   @doc """
-  Runs a `callback` with a channel for a `tag` and `namespace` for a `caller`.
+  Runs a `callback` that receives a RabbitMq channel from a `tag` and
+  `namespace` (the channel lives as long as the `caller` process lives).
   """
-  @spec with_rabbitmq(
-          caller :: pid(),
-          tag :: tag(),
-          namespace :: Connection.namespace()
-        ) :: {:ok, term()} | {:error, term()}
-  @spec with_rabbitmq(
-          caller :: pid(),
-          tag :: tag(),
-          namespace :: Connection.namespace(),
-          callback :: (Channel.t() -> {:ok, term()} | {:error, term()})
-        ) :: {:ok, term()} | {:error, term()}
-  def with_rabbitmq(caller, tag, namespace, callback \\ &{:ok, &1})
+  @spec with_channel(pid(), tag(), Connection.namespace(), rabbit_callback()) ::
+          {:ok, term()} | {:error, term()}
+  def with_channel(caller, tag, namespace, callback)
 
-  def with_rabbitmq(
+  def with_channel(
         caller,
         tag,
         namespace,
@@ -80,21 +78,6 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
           error
       end
     end)
-  end
-
-  @doc """
-  Opens a channel for a `tag` and `namespace` for a `caller`.
-  """
-  @spec open_channel(pid(), tag(), Connection.namespace()) ::
-          {:ok, Channel.t()} | {:error, term()}
-  def open_channel(caller, tag, namespace)
-
-  def open_channel(
-        caller,
-        tag,
-        namespace
-      ) when tag in [:subscriber, :publisher] do
-    with_rabbitmq(caller, tag, namespace)
   end
 
   #####################

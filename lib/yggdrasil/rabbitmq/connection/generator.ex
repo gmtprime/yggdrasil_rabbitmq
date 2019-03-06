@@ -33,21 +33,32 @@ defmodule Yggdrasil.RabbitMQ.Connection.Generator do
     to: DynamicSupervisor
 
   @doc """
-  Opens a channel for a `tag` and a `namespace`. Optionally, it receives
-  `options` e.g::
+  Runs a `callback` that receives a RabbitMQ channel from a `tag` and
+  `namespace`. The default callback only returns an `:ok` tuple with the
+  RabbitMQ channel. Optionally, it receives a new `callback` and a list of
+  `options`:
   - `:caller` - PID of the calling process.
   """
-  @spec open_channel(Pool.tag(), Connection.namespace())
-          :: {:ok, Channel.t()} | {:error, term()}
-  @spec open_channel(Pool.tag(), Connection.namespace(), Keyword.t())
-          :: {:ok, Channel.t()} | {:error, term()}
-  def open_channel(tag, namespace, options \\ [])
+  @spec with_channel(Pool.tag(), Connection.namespace()) ::
+          :ok | {:ok, term()} | {:error, term()}
+  @spec with_channel(
+          Pool.tag(),
+          Connection.namespace(),
+          Pool.rabbit_callback()
+        ) :: :ok | {:ok, term()} | {:error, term()}
+  @spec with_channel(
+          Pool.tag(),
+          Connection.namespace(),
+          Pool.rabbit_callback(),
+          Keyword.t()
+        ) :: :ok | {:ok, term()} | {:error, term()}
+  def with_channel(tag, namespace, callback \\ &{:ok, &1}, options \\ [])
 
-  def open_channel(tag, namespace, options) do
-    client = Keyword.get(options, :caller, self())
+  def with_channel(tag, namespace, callback, options) do
+    caller = Keyword.get(options, :caller, self())
 
     with {:ok, _} <- connect(__MODULE__, tag, namespace) do
-      Pool.open_channel(client, tag, namespace)
+      Pool.with_channel(caller, tag, namespace, callback)
     end
   end
 
