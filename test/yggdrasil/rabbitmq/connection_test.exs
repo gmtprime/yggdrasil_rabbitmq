@@ -16,7 +16,7 @@ defmodule Yggdrasil.RabbitMQ.ConnectionTest do
       assert :ok = Yggdrasil.subscribe(name: {Connection, namespace})
       assert_receive {:Y_CONNECTED, _}
       assert {:ok, conn} = Connection.start_link(namespace)
-      assert_receive {:Y_EVENT, _, :backing_off}
+      assert_receive {:Y_EVENT, _, :backing_off}, 500
       {:ok, [namespace: namespace, conn: conn]}
     end
 
