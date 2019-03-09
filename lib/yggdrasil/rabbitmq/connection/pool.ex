@@ -11,6 +11,12 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
   alias Yggdrasil.RabbitMQ.Connection
   alias Yggdrasil.Settings.RabbitMQ, as: Settings
 
+  @typedoc """
+  Callback for running functions using RabbitMQ channels.
+  """
+  @type rabbit_callback ::
+          (Channel.t() -> :ok | {:ok, term()} | {:error, term()})
+
   @registry Yggdrasil.Settings.yggdrasil_process_registry!()
 
   @typedoc """
