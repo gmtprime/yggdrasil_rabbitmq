@@ -46,7 +46,8 @@ defmodule Yggdrasil.RabbitMQ.Channel do
           pid: client_pid,
           channel: %RabbitChan{pid: channel_pid}
         } = client
-      ) do
+       ) do
+    _ = Process.flag(:trap_exit, true)
     _ = Process.monitor(client_pid)
     _ = Process.monitor(channel_pid)
     _ = Process.link(channel_pid)
