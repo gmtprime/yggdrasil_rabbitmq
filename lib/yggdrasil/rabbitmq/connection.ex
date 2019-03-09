@@ -32,7 +32,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
         }
 
   ############
-  # Client API
+  # Public API
 
   @doc """
   Starts a RabbitMQ connection with a `namespace` for the configuration.
@@ -40,7 +40,6 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   """
   @spec start_link(namespace()) :: GenServer.on_start()
   @spec start_link(namespace(), GenServer.options()) :: GenServer.on_start()
-  @impl true
   def start_link(namespace, options \\ [])
 
   def start_link(namespace, options) do
@@ -226,7 +225,6 @@ defmodule Yggdrasil.RabbitMQ.Connection do
 
   ##
   # Sends a debug message.
-  @spec send_debug(term(), State.t()) :: :ok
   defp send_debug(message, state)
 
   defp send_debug(message, %State{namespace: namespace}) do
@@ -237,7 +235,6 @@ defmodule Yggdrasil.RabbitMQ.Connection do
 
   ##
   # Shows a message for a successful connection.
-  @spec connected(State.t()) :: :ok
   defp connected(state)
 
   defp connected(%State{namespace: nil} = state) do
@@ -254,7 +251,6 @@ defmodule Yggdrasil.RabbitMQ.Connection do
 
   ##
   # Shows a message when backing off.
-  @spec backing_off(term(), State.t()) :: :ok
   defp backing_off(error, state)
 
   defp backing_off(
@@ -291,7 +287,6 @@ defmodule Yggdrasil.RabbitMQ.Connection do
 
   ##
   # Shows a message on disconnection.
-  @spec disconnected(term(), State.t()) :: :ok
   defp disconnected(reason, state)
 
   defp disconnected(:normal, %State{namespace: nil} = state) do

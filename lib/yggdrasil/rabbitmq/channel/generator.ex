@@ -1,17 +1,19 @@
-defmodule Yggdrasil.RabbitMQ.Connection.Generator do
+defmodule Yggdrasil.RabbitMQ.Channel.Generator do
   @moduledoc """
-  This module defines a supervisor for creating connection pools on demand.
+  This module defines a supervisor for creating channels on demand.
   """
   use DynamicSupervisor
 
+  alias AMQP.Channel, as: RabbitChan
+  alias AMQP.Connection, as: RabbitConn
+  alias Yggdrasil.RabbitMQ.Channel
   alias Yggdrasil.RabbitMQ.Client
-  alias Yggdrasil.RabbitMQ.Connection.Pool
   alias Yggdrasil.Settings
 
   @registry Settings.yggdrasil_process_registry!()
 
   @doc """
-  Starts a connection pool generator.
+  Starts a chanel generator.
   """
   @spec start_link() :: Supervisor.on_start()
   @spec start_link(DynamicSupervisor.options()) :: Supervisor.on_start()
@@ -20,7 +22,7 @@ defmodule Yggdrasil.RabbitMQ.Connection.Generator do
   end
 
   @doc """
-  Stops a connection pool `generator`. Optionally, it receives a `reason`
+  Stops a channel `generator`. Optionally, it receives a `reason`
   (defaults to `:normal`) and a `timeout` (default to `:infinity`).
   """
   @spec stop(Supervisor.supervisor()) :: :ok
@@ -31,21 +33,18 @@ defmodule Yggdrasil.RabbitMQ.Connection.Generator do
     to: DynamicSupervisor
 
   @doc """
-  Runs a channel `callback` in a `client`.
+  Runs a supervised RabbitMQ channel for a `client` using a RabbitMQ
+  `connection`.
   """
-  @spec with_channel(Client.t()) :: Pool.channel_callback_return()
-  @spec with_channel(Client.t(), Pool.channel_callback()) ::
-          Pool.channel_callback_return()
-  def with_channel(client, callback \\ &{:ok, &1})
+  @spec open(Client.t(), RabbitConn.t()) ::
+          {:ok, RabbitChan.t()} | {:error, term()}
+  def open(client, connection)
 
-  def with_channel(client, callback) do
-    with {:ok, _} <- connect(__MODULE__, client) do
-      Pool.with_channel(client, callback)
-    else
-      {:error, {:already_started, _}} ->
-        Pool.with_channel(client, callback)
-      error ->
-        error
+  def open(client, connection) do
+    with {:ok, channel} <- RabbitChan.open(connection),
+         new_client = %Client{client | channel: channel},
+         {:ok, _} <- connect(__MODULE__, new_client) do
+      {:ok, channel}
     end
   end
 
@@ -66,11 +65,11 @@ defmodule Yggdrasil.RabbitMQ.Connection.Generator do
   def connect(generator, client)
 
   def connect(generator, %Client{} = client) do
-    name = gen_pool_name(client)
+    name = gen_channel_name(client)
 
     case @registry.whereis_name(name) do
       :undefined ->
-        specs = gen_pool_specs(name, client)
+        specs = gen_channel_specs(name, client)
         DynamicSupervisor.start_child(generator, specs)
 
       pid when is_pid(pid) ->
@@ -80,20 +79,20 @@ defmodule Yggdrasil.RabbitMQ.Connection.Generator do
 
   ##
   # Generates the pool name.
-  defp gen_pool_name(%Client{tag: tag, namespace: namespace}) do
-    {__MODULE__, tag, namespace}
+  defp gen_channel_name(%Client{tag: tag, namespace: namespace, pid: pid}) do
+    {Channel, pid, tag, namespace}
   end
 
   ##
   # Generates the pool spec.
-  defp gen_pool_specs(name, %Client{} = client) do
+  defp gen_channel_specs(name, %Client{} = client) do
     via_tuple = {:via, @registry, name}
 
     %{
       id: via_tuple,
-      type: :supervisor,
-      restart: :transient,
-      start: {Pool, :start_link, [client, [name: via_tuple]]}
+      type: :worker,
+      restart: :temporary,
+      start: {Channel, :start_link, [client, [name: via_tuple]]}
     }
   end
 end

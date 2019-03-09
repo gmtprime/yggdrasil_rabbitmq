@@ -2,151 +2,45 @@ defmodule Yggdrasil.RabbitMQ.ChannelCache do
   @moduledoc """
   This module defines a channel cache.
   """
-  use GenServer
-
-  alias AMQP.Channel
-  alias Yggdrasil.RabbitMQ.Connection
-  alias Yggdrasil.RabbitMQ.Connection.Pool
-
-  require Logger
-
-  @cache :yggdrasil_rabbitmq_channel_cache
-
-  @typedoc false
-  @type type :: {Pool.tag(), Connection.namespace()}
-
-  ############
-  # Public API
+  alias AMQP.Channel, as: RabbitChan
+  alias Yggdrasil.RabbitMQ.Client
 
   @doc """
-  Starts a channel cache with some optional `GenServer` `options`.
+  Creates a new channel cache.
   """
-  @spec start_link() :: GenServer.on_start()
-  @spec start_link(GenServer.options()) :: GenServer.on_start()
-  def start_link(options \\ [])
+  @spec new() :: :ets.tab()
+  def new do
+    options = [
+      :set,
+      :public,
+      :named_table,
+      read_concurrency: true,
+      write_concurrency: true
+    ]
 
-  def start_link(options) do
-    GenServer.start_link(__MODULE__, nil, options)
+    :ets.new(__MODULE__, options)
   end
 
   @doc """
-  Stops a channel `cache`. Optionally, it receives a `reason` (defaults to
-  `:normal`) and a timeout (defaults to `:infinity`)
+  Looks up a channel given a `client` struct.
   """
-  @spec stop(GenServer.name()) :: :ok
-  @spec stop(GenServer.name(), term()) :: :ok
-  @spec stop(GenServer.name(), term(), :infinity | non_neg_integer()) :: :ok
-  defdelegate stop(cache, reason \\ :normal, timeout \\ :infinity),
-    to: GenServer
+  @spec lookup(Client.t()) :: {:ok, RabbitChan.t()} | {:error, term()}
+  def lookup(client)
 
-  @doc """
-  Looks up a channel by `client` PID, `tag` and `namespace`.
-  """
-  @spec lookup(pid(), Pool.tag(), Connection.namespace())
-          :: {:ok, term()} | {:error, term()}
-  def lookup(client, tag, namespace) do
-    lookup(__MODULE__, client, tag, namespace)
+  def lookup(%Client{} = client) do
+    lookup(__MODULE__, client)
   end
 
   @doc false
-  @spec lookup(GenServer.name(), pid(), Pool.tag(), Connection.namespace())
-          :: {:ok, term()} | {:error, term()}
-  def lookup(channel_cache, client, tag, namespace) do
-    cache = :sys.get_state(channel_cache)
+  @spec lookup(:ets.tab(), Client.t()) ::
+          {:ok, RabbitChan.t()} | {:error, term()}
+  def lookup(cache, client)
 
-    do_lookup(cache, client, tag, namespace)
-  end
+  def lookup(cache, %Client{} = client) do
+    key = Client.get_key(client)
 
-  @doc """
-  Inserts a `channel` by `client`, `tag` and `namespace`.
-  """
-  @spec insert(
-          client :: pid(),
-          tag :: Pool.tag(),
-          namespace :: Connection.namespace(),
-          channel :: Channel.t()
-        ) :: {:ok, term()} | {:error, term()}
-  def insert(client, tag, namespace, channel) do
-    insert(__MODULE__, client, tag, namespace, channel)
-  end
-
-  @doc false
-  @spec insert(
-          channel_cache :: GenServer.name(),
-          client :: pid(),
-          tag :: Pool.tag(),
-          namespace :: Connection.namespace(),
-          channel :: Channel.t()
-        ) :: {:ok, term()} | {:error, term()}
-  def insert(channel_cache, client, tag, namespace, channel) do
-    message = {:insert, client, tag, namespace, channel}
-    GenServer.call(channel_cache, message)
-  end
-
-  #####################
-  # GenServer callbacks
-
-  @impl true
-  def init(_) do
-    _ = Process.flag(:trap_exit, true)
-    opts = [:set, :public, read_concurrency: true]
-    cache = :ets.new(@cache, opts)
-    {:ok, cache}
-  end
-
-  @impl true
-  def handle_call({:insert, client, tag, namespace, channel}, _from, cache) do
-    do_insert(cache, client, tag, namespace, channel)
-    {:reply, :ok, cache}
-  end
-
-  @impl true
-  def handle_info({:DOWN, _, _, pid, _}, cache) do
-    do_delete(cache, pid)
-    {:noreply, cache}
-  end
-
-  def handle_info({:EXIT, _, _}, cache) do
-    {:noreply, cache}
-  end
-
-  @impl true
-  def terminate(:normal, cache) do
-    Logger.debug("#{__MODULE__} stopped")
-    do_delete_all(cache)
-    :ok
-  end
-
-  def terminate(reason, cache) do
-    Logger.warn("#{__MODULE__} stopped with reason #{inspect(reason)}")
-    do_delete_all(cache)
-    :ok
-  end
-
-  #########
-  # Helpers
-
-  @chan :chan
-  @typedoc false
-  @type chan_key :: {:chan, pid(), Pool.tag(), Connection.namespace()}
-
-  @pid :pid
-  @typedoc false
-  @type pid_key :: {:pid, pid()}
-
-  @doc false
-  # Looks up a channel by `client` PID, `tag` and `namespace` in a `cache`.
-  @spec do_lookup(
-          cache :: :ets.tab(),
-          client :: pid(),
-          tag :: Pool.tag(),
-          namespace :: Connection.namespace()
-        ) :: {:ok, Channel.t()} | {:error, term()}
-  def do_lookup(cache, client, tag, namespace) do
-    chan_key = {@chan, client, tag, namespace}
-
-    with [{^chan_key, %Channel{} = channel} | _] <-
-           :ets.lookup(cache, chan_key) do
+    with [{^key, %RabbitChan{} = channel} | _] <- :ets.lookup(cache, key),
+         true <- Process.alive?(channel.pid) do
       {:ok, channel}
     else
       _ ->
@@ -154,96 +48,43 @@ defmodule Yggdrasil.RabbitMQ.ChannelCache do
     end
   end
 
-  @doc false
-  # Inserts a new channel-client relation.
-  @spec do_insert(
-          cache :: :ets.tab(),
-          client :: pid(),
-          tag :: Pool.tag(),
-          namespace :: Connection.namespace(),
-          channel :: Channel.t()
-        ) :: :ok
-  def do_insert(cache, client, tag, namespace, %Channel{pid: pid} = channel) do
-    with [] <- :ets.lookup(cache, {@pid, pid}) do
-      _ = Process.monitor(client)
-      _ = Process.monitor(pid)
-      # On exit closes all channels.
-      _ = Process.link(pid)
-      chan_key = {@chan, client, tag, namespace}
-      :ets.insert(cache, {{@pid, pid}, chan_key})
-      :ets.insert(cache, {chan_key, channel})
+  @doc """
+  Inserts a new channel for a `client`.
+  """
+  @spec insert(Client.t()) :: :ok
+  def insert(client)
 
-      Logger.debug(
-        "#{__MODULE__} opened a RabbitMQ #{inspect(tag)} channel" <>
-          " namespace #{inspect(namespace)} and client #{inspect(client)}"
-      )
+  def insert(%Client{} = client) do
+    insert(__MODULE__, client)
+  end
+
+  @doc false
+  @spec insert(:ets.tab(), Client.t()) :: :ok
+  def insert(cache, %Client{channel: %RabbitChan{} = channel} = client) do
+    key = Client.get_key(client)
+
+    with [] <- :ets.lookup(cache, key) do
+      :ets.insert(cache, {key, channel})
     end
 
     :ok
   end
 
-  @doc false
-  # Deletes a channel-client relation.
-  @spec do_delete(cache :: :ets.tab(), pid :: pid()) :: :ok
-  def do_delete(cache, pid) when is_pid(pid) do
-    pid_key = {@pid, pid}
-    case :ets.lookup(cache, pid_key) do
-      # Client died
-      [] ->
-        do_delete_client(cache, pid_key)
+  @doc """
+  Deletes a `client` channel from the cache.
+  """
+  @spec delete(Client.t()) :: :ok
+  def delete(client)
 
-      # Channel died
-      [{^pid_key, {@chan, _, _, _} = chan_key} | _] ->
-        do_delete_channel(cache, chan_key, pid_key)
-    end
+  def delete(%Client{} = client) do
+    delete(__MODULE__, client)
   end
 
   @doc false
-  # Deletes a channel-client relation. Closes the channel if the client is
-  # dead.
-  @spec do_delete_client(:ets.tab(), pid_key()) :: :ok | no_return()
-  def do_delete_client(cache, pid_key)
-
-  def do_delete_client(cache, {@pid, client}) do
-    channels = :ets.match(cache, {{@chan, client, :"$1", :"$2"}, :"$3"})
-    for [tag, namespace, %Channel{pid: pid} = channel] <- channels do
-      Logger.debug("#{__MODULE__} closing channel #{inspect(channel)}")
-      :ok = Channel.close(channel)
-      do_delete_channel(cache, {@chan, client, tag, namespace}, {@pid, pid})
-    end
-
-    :ok
-  end
-
-  @doc false
-  # Deletes a dead channel from a client.
-  @spec do_delete_channel(:ets.tab(), chan_key(), pid_key()) :: :ok
-  def do_delete_channel(
-        cache,
-        {@chan, client, tag, namespace} = chan_key,
-        {@pid, _} = pid_key
-      ) do
-    Logger.debug(
-      "#{__MODULE__} removing channel with tag #{inspect(tag)} and" <>
-      " namespace #{inspect(namespace)} for client #{inspect(client)}"
-    )
-    :ets.delete(cache, chan_key)
-    :ets.delete(cache, pid_key)
-
-    :ok
-  end
-
-  @doc false
-  # Deletes all.
-  @spec do_delete_all(:ets.tab()) :: :ok | no_return()
-  def do_delete_all(cache) do
-    cache
-    |> :ets.match({{@chan, :_, :_, :_}, :"$1"})
-    |> List.flatten()
-    |> Enum.map(fn channel -> :ok = Channel.close(channel) end)
-
-    :ets.delete(cache)
-
+  @spec delete(:ets.tab(), Client.t()) :: :ok
+  def delete(cache, %Client{} = client) do
+    key = Client.get_key(client)
+    :ets.delete(cache, key)
     :ok
   end
 end

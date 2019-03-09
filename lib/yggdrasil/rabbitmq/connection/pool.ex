@@ -4,32 +4,39 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
   """
   use Supervisor
 
-  alias AMQP.Channel
+  alias AMQP.Channel, as: RabbitChan
+  alias Yggdrasil.RabbitMQ.Channel.Generator, as: ChannelGen
   alias Yggdrasil.RabbitMQ.ChannelCache
+  alias Yggdrasil.RabbitMQ.Client
   alias Yggdrasil.RabbitMQ.Connection
   alias Yggdrasil.Settings.RabbitMQ, as: Settings
 
   @registry Yggdrasil.Settings.yggdrasil_process_registry!()
 
   @typedoc """
-  Tag for the connection pool.
+  Channel callback return.
   """
-  @type tag :: :subscriber | :publisher
+  @type channel_callback_return ::
+          {:ok, term()} | {:error, term()} | term()
+  @typedoc """
+  Channel callback function.
+  """
+  @type channel_callback ::
+          (RabbitChan.t() -> channel_callback_return())
 
   ############
   # Public API
 
   @doc """
-  Starts a connection pool using a `tag` and a `namespace` to identify it.
-  Additionally, it receives `Supervisor` `options`.
+  Starts a connection pool using an initial `client`. Optionally, it receives
+  some `Supervisor` `options`.
   """
-  @spec start_link(tag(), Connection.namespace()) :: Supervisor.on_start()
-  @spec start_link(tag(), Connection.namespace(), Supervisor.options()) ::
-          Supervisor.on_start()
-  def start_link(tag, namespace, options \\ [])
+  @spec start_link(Client.t()) :: Supervisor.on_start()
+  @spec start_link(Client.t(), Supervisor.options()) :: Supervisor.on_start()
+  def start_link(client, options \\ [])
 
-  def start_link(tag, namespace, options) when tag in [:subscriber, :publisher] do
-    Supervisor.start_link(__MODULE__, {tag, namespace}, options)
+  def start_link(%Client{} = client, options) do
+    Supervisor.start_link(__MODULE__, client, options)
   end
 
   @doc """
@@ -44,66 +51,36 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
     to: Supervisor
 
   @doc """
-  Runs a `callback` with a channel for a `tag` and `namespace` for a `caller`.
+  Runs a channel `callback` in a `client`.
   """
-  @spec with_rabbitmq(
-          caller :: pid(),
-          tag :: tag(),
-          namespace :: Connection.namespace()
-        ) :: {:ok, term()} | {:error, term()}
-  @spec with_rabbitmq(
-          caller :: pid(),
-          tag :: tag(),
-          namespace :: Connection.namespace(),
-          callback :: (Channel.t() -> {:ok, term()} | {:error, term()})
-        ) :: {:ok, term()} | {:error, term()}
-  def with_rabbitmq(caller, tag, namespace, callback \\ &{:ok, &1})
+  @spec with_channel(Client.t(), channel_callback()) ::
+          channel_callback_return()
+  def with_channel(client, callback)
 
-  def with_rabbitmq(
-        caller,
-        tag,
-        namespace,
-        callback
-      ) when tag in [:subscriber, :publisher] do
-    name = gen_pool_name(tag, namespace)
+  def with_channel(client, callback) do
+    name = gen_pool_name(client)
 
     :poolboy.transaction(name, fn worker ->
-      with {:error, _} <- ChannelCache.lookup(caller, tag, namespace),
+      with {:error, _} <- ChannelCache.lookup(client),
            {:ok, conn} <- Connection.get(worker),
-           {:ok, chan} <- Channel.open(conn),
-           :ok <- ChannelCache.insert(caller, tag, namespace, chan) do
-        callback.(chan)
+           {:ok, channel} <- ChannelGen.open(client, conn) do
+        callback.(channel)
       else
-        {:ok, %Channel{} = chan} ->
-          callback.(chan)
+        {:ok, %RabbitChan{} = channel} ->
+          callback.(channel)
         error ->
           error
       end
     end)
   end
 
-  @doc """
-  Opens a channel for a `tag` and `namespace` for a `caller`.
-  """
-  @spec open_channel(pid(), tag(), Connection.namespace()) ::
-          {:ok, Channel.t()} | {:error, term()}
-  def open_channel(caller, tag, namespace)
-
-  def open_channel(
-        caller,
-        tag,
-        namespace
-      ) when tag in [:subscriber, :publisher] do
-    with_rabbitmq(caller, tag, namespace)
-  end
-
   #####################
   # Supervisor callback
 
   @impl true
-  def init({tag, namespace}) do
-    name = gen_pool_name(tag, namespace)
-    size = gen_pool_size(tag, namespace)
+  def init(%Client{namespace: namespace} = client) do
+    name = gen_pool_name(client)
+    size = gen_pool_size(client)
 
     pool_args = [
       name: name,
@@ -122,20 +99,19 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
   #########
   # Helpers
 
-  @doc false
-  @spec gen_pool_name(tag(), Connection.namespace())
-          :: {:via, module(), {tag(), Connection.namespace()}}
-  def gen_pool_name(tag, namespace) do
-    {:via, @registry, {tag, namespace}}
+  ##
+  # Generates pool name.
+  defp gen_pool_name(%Client{tag: tag, namespace: namespace}) do
+    {:via, @registry, {__MODULE__, tag, namespace}}
   end
 
-  @doc false
-  @spec gen_pool_size(tag(), Connection.namespace()) :: pos_integer()
-  def gen_pool_size(:subscriber, namespace) do
+  ##
+  # Gets pool size.
+  defp gen_pool_size(%Client{tag: :subscriber, namespace: namespace}) do
     Settings.subscriber_connections!(namespace)
   end
 
-  def gen_pool_size(:publisher, namespace) do
+  defp gen_pool_size(%Client{tag: :publisher, namespace: namespace}) do
     Settings.publisher_connections!(namespace)
   end
 end
