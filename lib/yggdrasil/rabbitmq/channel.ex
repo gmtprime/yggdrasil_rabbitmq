@@ -41,12 +41,10 @@ defmodule Yggdrasil.RabbitMQ.Channel do
   def get(channel)
 
   def get(channel) do
-    try do
-      GenServer.call(channel, :get)
-    catch
-      _, _ ->
-        {:error, "Channel not found"}
-    end
+    GenServer.call(channel, :get)
+  catch
+    _, _ ->
+      {:error, "Channel not found"}
   end
 
   @doc """
@@ -122,13 +120,11 @@ defmodule Yggdrasil.RabbitMQ.Channel do
   end
 
   defp close_channel(%Client{channel: channel} = client) do
-    try do
-      RabbitChan.close(channel)
-      closed_channel(client)
-    catch
-      _, _ ->
-        :ok
-    end
+    RabbitChan.close(channel)
+    closed_channel(client)
+  catch
+    _, _ ->
+      :ok
   end
 
   defp closed_channel(%Client{} = client) do
