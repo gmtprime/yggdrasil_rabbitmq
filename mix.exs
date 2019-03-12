@@ -6,6 +6,7 @@ defmodule YggdrasilRabbitmq.MixProject do
 
   def project do
     [
+      name: "Yggdrasil for RabbitMQ",
       app: :yggdrasil_rabbitmq,
       version: @version,
       elixir: "~> 1.8",
@@ -32,7 +33,6 @@ defmodule YggdrasilRabbitmq.MixProject do
       {:yggdrasil, "~> 4.1"},
       {:poolboy, "~> 1.5"},
       {:amqp, "~> 1.1"},
-      {:uuid, "~> 1.1", only: [:dev, :test]},
       {:ex_doc, "~> 0.19", only: :dev},
       {:credo, "~> 1.0", only: :dev}
     ]
