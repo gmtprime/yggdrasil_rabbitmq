@@ -48,6 +48,24 @@ defmodule Yggdrasil.RabbitMQ.Channel.Generator do
     end
   end
 
+  @doc """
+  Looks up a RabbitMQ channel for a `client`.
+  """
+  @spec lookup(Client.t()) :: {:ok, RabbitChan.t()} | {:error, term()}
+  def lookup(client)
+
+  def lookup(%Client{} = client) do
+    name = gen_channel_name(client)
+
+    case @registry.whereis_name(name) do
+      :undefined ->
+        {:error, "Channel not found"}
+
+      pid when is_pid(pid) ->
+        Channel.get(pid)
+    end
+  end
+
   ############################
   # DynamicSupervisor callback
 
@@ -79,8 +97,13 @@ defmodule Yggdrasil.RabbitMQ.Channel.Generator do
 
   ##
   # Generates the pool name.
-  defp gen_channel_name(%Client{tag: tag, namespace: namespace, pid: pid}) do
-    {Channel, pid, tag, namespace}
+  defp gen_channel_name(%Client{} = client) do
+    id =
+      client
+      |> Map.take([:pid, :tag, :namespace])
+      |> Map.values()
+      |> List.to_tuple()
+    {Channel, id}
   end
 
   ##

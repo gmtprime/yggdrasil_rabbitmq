@@ -9,9 +9,6 @@ defmodule Yggdrasil.Settings.RabbitMQ do
 
   @envdoc """
   RabbitMQ hostname. Defaults to `"localhost"`.
-
-      iex> Yggdrasil.Settings.RabbitMQ.localhost()
-      {:ok, "localhost"}
   """
   app_env :hostname, :yggdrasil, [:rabbitmq, :hostname], default: "localhost"
 
@@ -99,24 +96,4 @@ defmodule Yggdrasil.Settings.RabbitMQ do
           :yggdrasil,
           [:rabbitmq, :subscriber_connections],
           default: 1
-
-  @envdoc """
-  RabbitMQ subscriber options. They are options for `:poolboy`. Defaults to
-  `[size: 5, max_overflow: 10].`
-
-      iex> Yggdrasil.Settings.RabbitMQ.yggdrasil_rabbitmq_subscribe_options()
-      {:ok, [size: 5, max_overflow: 10]}
-  """
-  app_env :subscriber_options,
-          :yggdrasil,
-          [:rabbitmq, :subscriber_options],
-          default: [size: 5, max_overflow: 10]
-
-  ################
-  # Debug settings
-
-  @envdoc """
-  Only for tests.
-  """
-  app_env :debug, :yggdrasil, [:rabbitmq, :debug], default: false
 end

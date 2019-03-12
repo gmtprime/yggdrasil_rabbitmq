@@ -3,7 +3,6 @@ defmodule Yggdrasil.RabbitMQ.ChannelTest do
 
   alias AMQP.Channel, as: RabbitChan
   alias Yggdrasil.RabbitMQ.Channel
-  alias Yggdrasil.RabbitMQ.ChannelCache
   alias Yggdrasil.RabbitMQ.Client
 
   setup do
@@ -20,17 +19,14 @@ defmodule Yggdrasil.RabbitMQ.ChannelTest do
       channel: %RabbitChan{pid: channel}
     }
 
-    config = [rabbitmq: [debug: true]]
-    Application.put_env(:yggdrasil, __MODULE__, config)
-
     {:ok, [client: client]}
   end
 
   describe "start/1" do
     test "inserts the new channel in cache",
            %{client: %Client{channel: channel} = client} do
-      assert {:ok, _} = Channel.start_link(client)
-      assert {:ok, ^channel} = ChannelCache.lookup(client)
+      assert {:ok, pid} = Channel.start_link(client)
+      assert {:ok, ^channel} = Channel.get(pid)
     end
   end
 
@@ -44,19 +40,20 @@ defmodule Yggdrasil.RabbitMQ.ChannelTest do
 
     test "when channel dies, process dies",
            %{client: %Client{channel: channel}, pid: pid} do
+      Process.monitor(pid)
       assert_receive {:Y_EVENT, _, :connected}
       Process.exit(channel.pid, :kill)
       assert_receive {:Y_EVENT, _, :disconnected}
-      assert not Process.alive?(pid)
+      assert_receive {:DOWN, _, _, ^pid, _}
     end
 
     test "when process dies, channel is removed",
-           %{client: %Client{channel: channel} = client} do
+           %{client: %Client{channel: channel}, pid: pid} do
+      Process.monitor(pid)
       assert_receive {:Y_EVENT, _, :connected}
-      assert {:ok, ^channel} = ChannelCache.lookup(client)
       Process.exit(channel.pid, :kill)
       assert_receive {:Y_EVENT, _, :disconnected}
-      assert {:error, _} = ChannelCache.lookup(client)
+      assert_receive {:DOWN, _, _, ^pid, _}
     end
   end
 
@@ -76,19 +73,23 @@ defmodule Yggdrasil.RabbitMQ.ChannelTest do
 
     test "when client dies, process dies",
            %{client: %Client{pid: client_pid}, pid: pid} do
+      Process.monitor(pid)
       assert_receive {:Y_EVENT, _, :connected}
       Process.exit(client_pid, :kill)
       assert_receive {:Y_EVENT, _, :disconnected}
-      assert not Process.alive?(pid)
+      assert_receive {:DOWN, _, _, ^pid, _}
     end
 
     test "when client dies, channel is closed",
            %{client: %Client{pid: client_pid, channel: channel}, pid: pid} do
+      channel_pid = channel.pid
+      Process.monitor(pid)
+      Process.monitor(channel_pid)
       assert_receive {:Y_EVENT, _, :connected}
       Process.exit(client_pid, :kill)
       assert_receive {:Y_EVENT, _, :disconnected}
-      assert not Process.alive?(pid)
-      assert not Process.alive?(channel.pid)
+      assert_receive {:DOWN, _, _, ^pid, _}
+      assert_receive {:DOWN, _, _, ^channel_pid, _}
     end
   end
 end

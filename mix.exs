@@ -33,7 +33,7 @@ defmodule YggdrasilRabbitmq.MixProject do
       {:poolboy, "~> 1.5"},
       {:amqp, "~> 1.1"},
       {:uuid, "~> 1.1", only: [:dev, :test]},
-      {:ex_doc, "~> 0.18.4", only: :dev},
+      {:ex_doc, "~> 0.19", only: :dev},
       {:credo, "~> 1.0", only: :dev}
     ]
   end
@@ -60,29 +60,34 @@ defmodule YggdrasilRabbitmq.MixProject do
     [
       source_url: @root,
       source_ref: "v#{@version}",
-      main: Yggdrasil.RabbitMQ.Application,
+      main: "readme",
       formatters: ["html"],
-      groups_for_modules: groups_for_modules()
+      groups_for_modules: groups_for_modules(),
+      extras: ["README.md"]
     ]
   end
 
   defp groups_for_modules do
     [
-      Application: [
-        Yggdrasil.RabbitMQ.Application
-      ],
-      Adapter: [
+      "RabbitMQ Adapter Settings": [
         Yggdrasil.Settings.RabbitMQ,
         Yggdrasil.Adapter.RabbitMQ
       ],
       "Subscriber adapter": [
         Yggdrasil.Subscriber.Adapter.RabbitMQ,
-        Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection,
-        Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator,
-        Yggdrasil.Subscriber.Adapter.RabbitMQ.Pool
       ],
       "Publisher adapter": [
         Yggdrasil.Publisher.Adapter.RabbitMQ
+      ],
+      "RabbitMQ Connection Handling": [
+        Yggdrasil.RabbitMQ.Connection,
+        Yggdrasil.RabbitMQ.Connection.Pool,
+        Yggdrasil.RabbitMQ.Connection.Generator
+      ],
+      "RabbitMQ Channel Handling": [
+        Yggdrasil.RabbitMQ.Client,
+        Yggdrasil.RabbitMQ.Channel,
+        Yggdrasil.RabbitMQ.Channel.Generator
       ]
     ]
   end

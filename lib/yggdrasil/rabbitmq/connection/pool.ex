@@ -6,7 +6,6 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
 
   alias AMQP.Channel, as: RabbitChan
   alias Yggdrasil.RabbitMQ.Channel.Generator, as: ChannelGen
-  alias Yggdrasil.RabbitMQ.ChannelCache
   alias Yggdrasil.RabbitMQ.Client
   alias Yggdrasil.RabbitMQ.Connection
   alias Yggdrasil.Settings.RabbitMQ, as: Settings
@@ -67,7 +66,7 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
     name = gen_pool_name(client)
 
     :poolboy.transaction(name, fn worker ->
-      with {:error, _} <- ChannelCache.lookup(client),
+      with {:error, _} <- ChannelGen.lookup(client),
            {:ok, conn} <- Connection.get(worker),
            {:ok, channel} <- ChannelGen.open(client, conn) do
         callback.(channel)

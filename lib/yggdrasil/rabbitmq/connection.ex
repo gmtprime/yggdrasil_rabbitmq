@@ -66,6 +66,16 @@ defmodule Yggdrasil.RabbitMQ.Connection do
     GenServer.call(connection, :get)
   end
 
+  @doc """
+  Subscribes to the connection given a `namespace`.
+  """
+  @spec subscribe(namespace()) :: :ok
+  def subscribe(namespace)
+
+  def subscribe(namespace) do
+    Yggdrasil.subscribe(name: {__MODULE__, namespace})
+  end
+
   #####################
   # GenServer callbacks
 
@@ -143,9 +153,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   ############################
   # Connection related helpers
 
-  @doc """
-  Connects to RabbitMQ given a initial `state`.
-  """
+  @doc false
   @spec connect(State.t()) :: {:ok, State.t()} | {:error, term()}
   def connect(state)
 
@@ -165,9 +173,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
     end
   end
 
-  @doc """
-  Returns a list of RabbitMQ options given an initial `state`.
-  """
+  @doc false
   @spec rabbitmq_options(State.t()) :: Keyword.t()
   def rabbitmq_options(state)
 
@@ -182,9 +188,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
     ]
   end
 
-  @doc """
-  Calculates the backoff given an `error` and a  `state`.
-  """
+  @doc false
   @spec backoff(term(), State.t()) :: State.t()
   def backoff(error, state)
 
@@ -201,10 +205,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
     new_state
   end
 
-  @doc """
-  Disconnects from RabbitMQ closing the connections in the `state` with a
-  `reason`.
-  """
+  @doc false
   @spec disconnect(term(), State.t()) :: State.t()
   def disconnect(reason, state)
 
@@ -223,14 +224,9 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   #########################
   # Logging related helpers
 
-  ##
-  # Sends a debug message.
-  defp send_debug(message, state)
-
-  defp send_debug(message, %State{namespace: namespace}) do
-    if Settings.debug!(namespace) do
-      Yggdrasil.publish([name: {__MODULE__, namespace}], message)
-    end
+  # Sends a notification.
+  defp send_notification(%State{namespace: namespace}, message) do
+    Yggdrasil.publish([name: {__MODULE__, namespace}], message)
   end
 
   ##
@@ -238,12 +234,12 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   defp connected(state)
 
   defp connected(%State{namespace: nil} = state) do
-    send_debug(:connected, state)
+    send_notification(state, :connected)
     Logger.debug("#{__MODULE__} connected to RabbitMQ")
   end
 
   defp connected(%State{namespace: namespace} = state) do
-    send_debug(:connected, state)
+    send_notification(state, :connected)
     Logger.debug(
       "#{__MODULE__} connected to RabbitMQ using namespace #{namespace}"
     )
@@ -261,7 +257,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
            backoff: backoff
          } = state
        ) do
-    send_debug(:backing_off, state)
+    send_notification(state, :backing_off)
     Logger.warn(
       "#{__MODULE__} cannot connected to RabbitMQ" <>
         " with error #{inspect(error)}" <>
@@ -277,7 +273,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
            backoff: backoff
          } = state
        ) do
-    send_debug(:backing_off, state)
+    send_notification(state, :backing_off)
     Logger.warn(
       "#{__MODULE__} cannot connected to RabbitMQ using #{namespace}" <>
         " with error #{inspect(error)}" <>
@@ -290,24 +286,24 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   defp disconnected(reason, state)
 
   defp disconnected(:normal, %State{namespace: nil} = state) do
-    send_debug(:disconnected, state)
+    send_notification(state, :disconnected)
     Logger.debug("#{__MODULE__} disconnected from RabbitMQ")
   end
 
   defp disconnected(:normal, %State{namespace: namespace} = state) do
-    send_debug(:disconnected, state)
+    send_notification(state, :disconnected)
     Logger.debug(
       "#{__MODULE__} disconnected from RabbitMQ using namespace #{namespace}"
     )
   end
 
   defp disconnected(_, %State{namespace: nil} = state) do
-    send_debug(:disconnected, state)
+    send_notification(state, :disconnected)
     Logger.warn("#{__MODULE__} disconnected from RabbitMQ")
   end
 
   defp disconnected(_, %State{namespace: namespace} = state) do
-    send_debug(:disconnected, state)
+    send_notification(state, :disconnected)
     Logger.warn(
       "#{__MODULE__} disconnected from RabbitMQ using namespace #{namespace}"
     )

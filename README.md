@@ -1,33 +1,44 @@
-# RabbitMQ adapter for Yggdrasil
+# Yggdrasil for RabbitMQ
 
 [![Build Status](https://travis-ci.org/gmtprime/yggdrasil_rabbitmq.svg?branch=master)](https://travis-ci.org/gmtprime/yggdrasil_rabbitmq) [![Hex pm](http://img.shields.io/hexpm/v/yggdrasil_rabbitmq.svg?style=flat)](https://hex.pm/packages/yggdrasil_rabbitmq) [![hex.pm downloads](https://img.shields.io/hexpm/dt/yggdrasil_rabbitmq.svg?style=flat)](https://hex.pm/packages/yggdrasil_rabbitmq)
 
-This project is a RabbitMQ adapter for `Yggdrasil` publisher/subscriber.
+`Yggdrasil` for RabbitMQ is a publisher/subscriber that:
+
+- It's easy to use and configure.
+- It's fault tolerant: recovers disconnected subscriptions.
+- It has reconnection support: configurable exponential backoff.
+- It has OS environment variable configuration support (useful for
+[Distillery](https://github.com/bitwalker/distillery) releases)
 
 ## Small example
 
-The following example uses RabbitMQ adapter to distribute messages:
+The following example uses RabbitMQ adapter to distribute messages e.g:
+
+Given the following channel:
 
 ```elixir
-iex(1)> channel = %Yggdrasil.Channel{
-iex(1)>   name: {"amq.topic", "some_channel"},
-iex(1)>   adapter: :rabbitmq
-iex(1)> }
-iex(2)> Yggdrasil.subscribe(channel)
-iex(3)> flush()
-{:Y_CONNECTED, %Yggdrasil.Channel{(...)}}
+iex> channel = [name: {"amq.topic", "routing.key"}, adapter: :rabbitmq]
 ```
 
-and to publish a message for the subscribers:
+You can:
 
-```elixir
-iex(4)> Yggdrasil.publish(channel, "message")
-iex(5)> flush()
-{:Y_EVENT, %Yggdrasil.Channel{(...)}, "message"}
-```
+* Subscribe to it:
 
-When the subscriber wants to stop receiving messages, then it can unsubscribe
-from the channel:
+  ```
+  iex> Yggdrasil.subscribe(channel)
+  iex> flush()
+  {:Y_CONNECTED, %Yggdrasil.Channel{(...)}}
+  ```
+
+* Publish messages to it:
+
+  ```elixir
+  iex(4)> Yggdrasil.publish(channel, "message")
+  iex(5)> flush()
+  {:Y_EVENT, %Yggdrasil.Channel{(...)}, "message"}
+  ```
+
+* Unsubscribe from it:
 
 ```elixir
 iex(6)> Yggdrasil.unsubscribe(channel)
@@ -38,39 +49,51 @@ iex(7)> flush()
 ## RabbitMQ adapter
 
 The RabbitMQ adapter has the following rules:
-  * The `adapter` name is identified by the atom `:rabbitmq`.
-  * The channel `name` must be a tuple with the exchange and the routing key.
-  * The `transformer` must encode to a string. From the `transformer`s provided
-  it defaults to `:default`, but `:json` can also be used.
-  * Any `backend` can be used (by default is `:default`).
+
+* The `adapter` name is identified by the atom `:rabbitmq`.
+* The channel `name` must be a tuple with the exchange and the routing key.
+* The `transformer` must encode to a string. By default, `Yggdrasil`
+  provides two transformers: `:default` (default) and `:json`.
+* Any `backend` can be used (by default is `:default`).
 
 The following is an example of a valid channel for both publishers and
 subscribers:
 
 ```elixir
 %Yggdrasil.Channel{
-  name: {"amq.topic", "postgres_channel_name"},
+  name: {"amq.topic", "my.routing.key"},
   adapter: :rabbitmq,
   transformer: :json
 }
 ```
 
-It will expect valid JSONs from RabbitMQ and it will write valid JSONs in
-RabbitMQ.
+The previous channel expects to:
+
+- Subscribe to or publish to the exchange `amq.topic` and using the
+routing key `my.routing.key`.
+- The adapter is `:rabbitmq`, so it will connect to RabbitMQ using the
+appropriate adapter.
+- The transformer expects valid JSONs when decoding (consuming from a
+subscription) and maps or keyword lists when encoding (publishing).
+
+> Note: Though the struct `Yggdrasil.Channel` is used, `Keyword` lists and
+> maps are also accepted as channels as long as they contain the required
+> keys.
 
 ## RabbitMQ configuration
 
 Uses the list of options for `AMQP`, but the more relevant optuons are
 shown below:
-  * `hostname` - RabbitMQ hostname (defaults to `"localhost"`).
-  * `port` - RabbitMQ port (defaults to `5672`).
-  * `username` - RabbitMQ username (defaults to `"guest"`).
-  * `password` - RabbitMQ password (defaults to `"guest"`).
-  * `virtual_host` - Virtual host (defaults to `"/"`).
-  * `heartbeat` - Heartbeat of the connections (defaults to `10` seconds).
-  * `subscriber_options` - Controls the amount of connections established with
-  RabbitMQ. These are `poolboy` options for RabbitMQ subscriber (defaults to
-  `[size: 5, max_overflow: 10]`).
+
+- `hostname` - RabbitMQ hostname (defaults to `"localhost"`).
+- `port` - RabbitMQ port (defaults to `5672`).
+- `username` - RabbitMQ username (defaults to `"guest"`).
+- `password` - RabbitMQ password (defaults to `"guest"`).
+- `virtual_host` - Virtual host (defaults to `"/"`).
+- `heartbeat` - Heartbeat of the connections (defaults to `10` seconds).
+
+> For more information about the available options check
+> `Yggdrasil.Settings.RabbitMQ`.
 
 The following shows a configuration with and without namespace:
 
@@ -81,43 +104,38 @@ config :yggdrasil,
 
 # With namespace
 config :yggdrasil, RabbitMQOne,
-  postgres: [
+  rabbitmq: [
     hostname: "rabbitmq.one",
     port: 1234
   ]
 ```
 
-Also the options can be provided as OS environment variables. The available
-variables are:
+All the available options are also available as OS environment variables.
+It's possible to even separate them by namespace e.g:
 
-  * `YGGDRASIL_RABBITMQ_HOSTNAME` or `<NAMESPACE>_YGGDRASIL_RABBITMQ_HOSTNAME`.
-  * `YGGDRASIL_RABBITMQ_PORT` or `<NAMESPACE>_YGGDRASIL_RABBITMQ_PORT`.
-  * `YGGDRASIL_RABBITMQ_USERNAME` or `<NAMESPACE>_YGGDRASIL_RABBITMQ_USERNAME`.
-  * `YGGDRASIL_RABBITMQ_PASSWORD` or `<NAMESPACE>_YGGDRASIL_RABBITMQ_PASSWORD`.
-  * `YGGDRASIL_RABBITMQ_VIRTUAL_HOST` or
-  `<NAMESPACE>_YGGDRASIL_RABBITMQ_VIRTUAL_HOST`.
-  * `YGGDRASIL_RABBITMQ_HEARTBEAT` or
-  `<NAMESPACE>_YGGDRASIL_RABBITMQ_HEARTBEAT`.
-  
-where `<NAMESPACE>` is the snakecase of the namespace chosen e.g. for the
-namespace `RabbitmqTwo`, you would use `RABBITMQ_TWO` as namespace in the OS
-environment variable.
+Given two namespaces, the default one and `Rabbit.One`, it's possible to
+load the `hostname` from the OS environment variables as follows:
+
+- `$YGGDRASIL_RABBITMQ_HOSTNAME` for the default namespace.
+- `$RABBIT_ONE_YGGDRASIL_RABBITMQ_HOSTNAME` for `Rabbit.One`.
+
+In general, the namespace will go before the name of the variable.
 
 ## Installation
 
-Using this RabbitMQ adapter with `Yggdrasil` is a matter of adding the
+Using this adapter with `Yggdrasil` is a matter of adding the
 available hex package to your `mix.exs` file e.g:
 
 ```elixir
 def deps do
-  [{:yggdrasil_rabbitmq, "~> 4.1"}]
+  [{:yggdrasil_rabbitmq, "~> 5.0"}]
 end
 ```
 
 ## Running the tests
 
 A `docker-compose.yml` file is provided with the project. If  you don't have a
-RabbitMQ database, but you do have Docker installed, then just do:
+RabbitMQ server, but you do have Docker installed, then you can run:
 
 ```
 $ docker-compose up --build
@@ -129,12 +147,6 @@ And in another shell run:
 $ mix deps.get
 $ mix test
 ```
-
-## Relevant projects used
-
-  * [`AMQP`](https://github.com/pma/amqp): AMQP application.
-  * [`Connection`](https://github.com/fishcakez/connection): wrapper over
-  `GenServer` to handle connections.
 
 ## Author
 
