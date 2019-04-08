@@ -22,7 +22,7 @@ defmodule Yggdrasil.RabbitMQ.Connection.GeneratorTest do
     end
 
     test "returns an error when no connection is available",
-           %{client: client} do
+         %{client: client} do
       namespace = __MODULE__.Disconnected
       config = [rabbitmq: [hostname: "disconnected"]]
       Application.put_env(:yggdrasil, namespace, config)

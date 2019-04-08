@@ -6,9 +6,6 @@ defmodule Yggdrasil.RabbitMQ.Connection.Generator do
 
   alias Yggdrasil.RabbitMQ.Client
   alias Yggdrasil.RabbitMQ.Connection.Pool
-  alias Yggdrasil.Settings
-
-  @registry Settings.yggdrasil_process_registry!()
 
   @doc """
   Starts a connection pool generator.
@@ -44,6 +41,7 @@ defmodule Yggdrasil.RabbitMQ.Connection.Generator do
     else
       {:error, {:already_started, _}} ->
         Pool.with_channel(client, callback)
+
       error ->
         error
     end
@@ -61,14 +59,14 @@ defmodule Yggdrasil.RabbitMQ.Connection.Generator do
   # Helpers
 
   @doc false
-  @spec connect(Supervisor.supervisor(), Client.t())
-          :: DynamicSupervisor.on_start_child()
+  @spec connect(Supervisor.supervisor(), Client.t()) ::
+          DynamicSupervisor.on_start_child()
   def connect(generator, client)
 
   def connect(generator, %Client{} = client) do
     name = gen_pool_name(client)
 
-    case @registry.whereis_name(name) do
+    case ExReg.whereis_name(name) do
       :undefined ->
         specs = gen_pool_specs(name, client)
         DynamicSupervisor.start_child(generator, specs)
@@ -87,7 +85,7 @@ defmodule Yggdrasil.RabbitMQ.Connection.Generator do
   ##
   # Generates the pool spec.
   defp gen_pool_specs(name, %Client{} = client) do
-    via_tuple = {:via, @registry, name}
+    via_tuple = ExReg.local(name)
 
     %{
       id: via_tuple,

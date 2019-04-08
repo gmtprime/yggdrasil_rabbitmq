@@ -111,6 +111,7 @@ defmodule Yggdrasil.Publisher.Adapter.RabbitMQ do
           Basic.publish(chan, exch, rk, encoded, options)
         end)
       end
+
     {:reply, result, client}
   end
 end

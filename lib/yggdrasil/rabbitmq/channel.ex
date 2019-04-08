@@ -66,7 +66,7 @@ defmodule Yggdrasil.RabbitMQ.Channel do
           pid: client_pid,
           channel: %RabbitChan{pid: channel_pid}
         } = client
-       ) do
+      ) do
     _ = Process.flag(:trap_exit, true)
     _ = Process.monitor(client_pid)
     _ = Process.monitor(channel_pid)
@@ -84,7 +84,7 @@ defmodule Yggdrasil.RabbitMQ.Channel do
   def handle_info(
         {:DOWN, _, _, pid, _},
         %Client{channel: %RabbitChan{pid: pid}} = client
-  ) do
+      ) do
     # Channel dies
     {:stop, :normal, client}
   end
@@ -114,8 +114,9 @@ defmodule Yggdrasil.RabbitMQ.Channel do
 
   defp connected(%Client{} = client) do
     send_notification(client, :connected)
+
     Logger.debug(
-      "#{__MODULE__} connected to channel for client #{inspect client}"
+      "#{__MODULE__} connected to channel for client #{inspect(client)}"
     )
   end
 
@@ -129,15 +130,14 @@ defmodule Yggdrasil.RabbitMQ.Channel do
 
   defp closed_channel(%Client{} = client) do
     send_notification(client, :closed_channel)
-    Logger.debug(
-      "#{__MODULE__} closed channel for client #{inspect client}"
-    )
+    Logger.debug("#{__MODULE__} closed channel for client #{inspect(client)}")
   end
 
   defp disconnected(%Client{} = client) do
     send_notification(client, :disconnected)
+
     Logger.debug(
-      "#{__MODULE__} disconnected from channel for client #{inspect client}"
+      "#{__MODULE__} disconnected from channel for client #{inspect(client)}"
     )
   end
 end

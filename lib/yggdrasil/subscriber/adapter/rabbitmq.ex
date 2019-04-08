@@ -94,14 +94,16 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   def handle_info(
         {:Y_EVENT, _, :disconnected},
         %State{chan: chan} = state
-      ) when not is_nil(chan) do
+      )
+      when not is_nil(chan) do
     {:noreply, state, {:continue, {:disconnect, "Connection down"}}}
   end
 
   def handle_info(
         {:Y_DISCONNECTED, _},
         %State{chan: chan} = state
-      ) when not is_nil(chan) do
+      )
+      when not is_nil(chan) do
     {:noreply, state, {:continue, {:disconnect, "Yggdrasil failure"}}}
   end
 
@@ -145,6 +147,7 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
     Connection.subscribe(namespace)
     {:noreply, state}
   end
+
   def handle_continue(:connect, %State{} = state) do
     with {:ok, new_state} <- connect(state) do
       {:noreply, new_state}
@@ -261,16 +264,17 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
 
   # Shows connection message.
   defp connected(%State{channel: channel}) do
-    Logger.info("#{__MODULE__} subscribed to #{inspect channel}")
+    Logger.info("#{__MODULE__} subscribed to #{inspect(channel)}")
     :ok
   end
 
   # Shows error when connecting.
   defp backing_off(error, %State{channel: channel}) do
     Logger.warn(
-      "#{__MODULE__} cannot subscribe to #{inspect channel}" <>
-        " due to #{inspect error}"
+      "#{__MODULE__} cannot subscribe to #{inspect(channel)}" <>
+        " due to #{inspect(error)}"
     )
+
     :ok
   end
 
@@ -278,8 +282,9 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   defp disconnected(error, %State{channel: %Channel{} = channel}) do
     Logger.warn(
       "#{__MODULE__} unsubscribed from #{inspect(channel)}" <>
-        " due to #{inspect error}"
+        " due to #{inspect(error)}"
     )
+
     :ok
   end
 
@@ -293,5 +298,4 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
       "#{__MODULE__} stopped for #{inspect(channel)} due to #{inspect(reason)}"
     )
   end
-
 end

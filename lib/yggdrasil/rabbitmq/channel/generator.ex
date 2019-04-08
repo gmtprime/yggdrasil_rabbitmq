@@ -8,9 +8,6 @@ defmodule Yggdrasil.RabbitMQ.Channel.Generator do
   alias AMQP.Connection, as: RabbitConn
   alias Yggdrasil.RabbitMQ.Channel
   alias Yggdrasil.RabbitMQ.Client
-  alias Yggdrasil.Settings
-
-  @registry Settings.yggdrasil_process_registry!()
 
   @doc """
   Starts a chanel generator.
@@ -57,7 +54,7 @@ defmodule Yggdrasil.RabbitMQ.Channel.Generator do
   def lookup(%Client{} = client) do
     name = gen_channel_name(client)
 
-    case @registry.whereis_name(name) do
+    case ExReg.whereis_name(name) do
       :undefined ->
         {:error, "Channel not found"}
 
@@ -78,14 +75,14 @@ defmodule Yggdrasil.RabbitMQ.Channel.Generator do
   # Helpers
 
   @doc false
-  @spec connect(Supervisor.supervisor(), Client.t())
-          :: DynamicSupervisor.on_start_child()
+  @spec connect(Supervisor.supervisor(), Client.t()) ::
+          DynamicSupervisor.on_start_child()
   def connect(generator, client)
 
   def connect(generator, %Client{} = client) do
     name = gen_channel_name(client)
 
-    case @registry.whereis_name(name) do
+    case ExReg.whereis_name(name) do
       :undefined ->
         specs = gen_channel_specs(name, client)
         DynamicSupervisor.start_child(generator, specs)
@@ -103,13 +100,14 @@ defmodule Yggdrasil.RabbitMQ.Channel.Generator do
       |> Map.take([:pid, :tag, :namespace])
       |> Map.values()
       |> List.to_tuple()
+
     {Channel, id}
   end
 
   ##
   # Generates the pool spec.
   defp gen_channel_specs(name, %Client{} = client) do
-    via_tuple = {:via, @registry, name}
+    via_tuple = ExReg.local(name)
 
     %{
       id: via_tuple,

@@ -30,10 +30,10 @@ defmodule YggdrasilRabbitmq.MixProject do
 
   defp deps do
     [
-      {:yggdrasil, "~> 4.1"},
+      {:yggdrasil, "~> 5.0"},
       {:poolboy, "~> 1.5"},
       {:amqp, "~> 1.1"},
-      {:ex_doc, "~> 0.19", only: :dev},
+      {:ex_doc, "~> 0.20", only: :dev},
       {:credo, "~> 1.0", only: :dev}
     ]
   end
@@ -74,7 +74,7 @@ defmodule YggdrasilRabbitmq.MixProject do
         Yggdrasil.Adapter.RabbitMQ
       ],
       "Subscriber adapter": [
-        Yggdrasil.Subscriber.Adapter.RabbitMQ,
+        Yggdrasil.Subscriber.Adapter.RabbitMQ
       ],
       "Publisher adapter": [
         Yggdrasil.Publisher.Adapter.RabbitMQ

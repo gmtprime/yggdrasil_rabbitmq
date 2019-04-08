@@ -240,6 +240,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
 
   defp connected(%State{namespace: namespace} = state) do
     send_notification(state, :connected)
+
     Logger.debug(
       "#{__MODULE__} connected to RabbitMQ using namespace #{namespace}"
     )
@@ -258,6 +259,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
          } = state
        ) do
     send_notification(state, :backing_off)
+
     Logger.warn(
       "#{__MODULE__} cannot connected to RabbitMQ" <>
         " with error #{inspect(error)}" <>
@@ -274,6 +276,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
          } = state
        ) do
     send_notification(state, :backing_off)
+
     Logger.warn(
       "#{__MODULE__} cannot connected to RabbitMQ using #{namespace}" <>
         " with error #{inspect(error)}" <>
@@ -292,6 +295,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
 
   defp disconnected(:normal, %State{namespace: namespace} = state) do
     send_notification(state, :disconnected)
+
     Logger.debug(
       "#{__MODULE__} disconnected from RabbitMQ using namespace #{namespace}"
     )
@@ -304,6 +308,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
 
   defp disconnected(_, %State{namespace: namespace} = state) do
     send_notification(state, :disconnected)
+
     Logger.warn(
       "#{__MODULE__} disconnected from RabbitMQ using namespace #{namespace}"
     )

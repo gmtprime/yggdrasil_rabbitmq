@@ -27,7 +27,7 @@ You can:
   ```
   iex> Yggdrasil.subscribe(channel)
   iex> flush()
-  {:Y_CONNECTED, %Yggdrasil.Channel{(...)}}
+  {:Y_CONNECTED, %Yggdrasil.Channel{...}}
   ```
 
 * Publish messages to it:
@@ -35,7 +35,7 @@ You can:
   ```elixir
   iex(4)> Yggdrasil.publish(channel, "message")
   iex(5)> flush()
-  {:Y_EVENT, %Yggdrasil.Channel{(...)}, "message"}
+  {:Y_EVENT, %Yggdrasil.Channel{...}, "message"}
   ```
 
 * Unsubscribe from it:
@@ -43,8 +43,30 @@ You can:
 ```elixir
 iex(6)> Yggdrasil.unsubscribe(channel)
 iex(7)> flush()
-{:Y_DISCONNECTED, %Yggdrasil.Channel{(...)}}
+{:Y_DISCONNECTED, %Yggdrasil.Channel{...}}
 ```
+
+And additionally, you can use `Yggdrasil` behaviour to build a subscriber:
+
+```elixir
+defmodule Subscriber do
+  use Yggdrasil
+
+  def start_link do
+    channel = [name: {"amq.topic", "routing.key"}, adapter: :rabbitmq]
+    Yggdrasil.start_link(__MODULE__, [channel])
+  end
+
+  @impl true
+  def handle_event(_channel, message, _) do
+    IO.inspect message
+    {:ok, nil}
+  end
+end
+```
+
+The previous `Subscriber` will print every message that comes from the RabbitMQ
+exchange `"amq.topic"` and routing key `"routing.key"`.
 
 ## RabbitMQ adapter
 
@@ -82,15 +104,23 @@ subscription) and maps or keyword lists when encoding (publishing).
 
 ## RabbitMQ configuration
 
-Uses the list of options for `AMQP`, but the more relevant optuons are
-shown below:
+This adapter supports the following list of options:
 
-- `hostname` - RabbitMQ hostname (defaults to `"localhost"`).
-- `port` - RabbitMQ port (defaults to `5672`).
-- `username` - RabbitMQ username (defaults to `"guest"`).
-- `password` - RabbitMQ password (defaults to `"guest"`).
-- `virtual_host` - Virtual host (defaults to `"/"`).
-- `heartbeat` - Heartbeat of the connections (defaults to `10` seconds).
+Option                   | Default       | Description
+:----------------------- | :------------ | :----------
+`hostname`               | `"localhost"` | RabbitMQ hostname.
+`port`                   | `5672`        | RabbitMQ port.
+`username`               | `"guest"`     | RabbitMQ username.
+`password`               | `"guest"`     | RabbitMQ password.
+`virtual_host`           | `"/"`         | Virtual host.
+`heartbeat`              | `10` seconds  | Heartbeat of the connections.
+`max_retries`            | `3`           | Amount of retries where the backoff time is incremented.
+`slot_size`              | `10`          | Max amount of slots when adapters are trying to reconnect.
+`subscriber_connections` | `1`           | Amount of subscriber connections.
+`publisher_connections`  | `1`           | Amount of publisher connections.
+
+> Note: Concurrency is handled by creating channels on the present connections
+> instead of creating several connections for every subscriber/publisher.
 
 > For more information about the available options check
 > `Yggdrasil.Settings.RabbitMQ`.

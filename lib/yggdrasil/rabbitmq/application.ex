@@ -7,9 +7,10 @@ defmodule Yggdrasil.RabbitMQ.Application do
   alias Yggdrasil.RabbitMQ.Connection.Generator, as: ConnectionGen
 
   def start(_type, _args) do
-
     children = [
-      Supervisor.child_spec({ConnectionGen, [name: ConnectionGen]}, type: :supervisor),
+      Supervisor.child_spec({ConnectionGen, [name: ConnectionGen]},
+        type: :supervisor
+      ),
       Supervisor.child_spec({ChannelGen, [name: ChannelGen]}, type: :supervisor),
       Supervisor.child_spec({RabbitMQ, []}, [])
     ]

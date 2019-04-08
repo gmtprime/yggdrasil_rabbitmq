@@ -16,8 +16,6 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
   @type rabbit_callback ::
           (Channel.t() -> :ok | {:ok, term()} | {:error, term()})
 
-  @registry Yggdrasil.Settings.yggdrasil_process_registry!()
-
   @typedoc """
   Channel callback return.
   """
@@ -73,6 +71,7 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
       else
         {:ok, %RabbitChan{} = channel} ->
           callback.(channel)
+
         error ->
           error
       end
@@ -107,7 +106,7 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
   ##
   # Generates pool name.
   defp gen_pool_name(%Client{tag: tag, namespace: namespace}) do
-    {:via, @registry, {__MODULE__, tag, namespace}}
+    ExReg.local({__MODULE__, tag, namespace})
   end
 
   ##

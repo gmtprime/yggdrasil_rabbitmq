@@ -20,11 +20,11 @@ defmodule Yggdrasil.RabbitMQ.Client do
   RabbitMQ client connection.
   """
   @type t :: %Client{
-    namespace: namespace :: Connection.namespace(),
-    tag: tag :: tag(),
-    pid: pid :: pid(),
-    channel: channel :: RabbitChan.t()
-  }
+          namespace: namespace :: Connection.namespace(),
+          tag: tag :: tag(),
+          pid: pid :: pid(),
+          channel: channel :: RabbitChan.t()
+        }
 
   @doc """
   Gets a new client with `pid`, `tag` and `namespace`
