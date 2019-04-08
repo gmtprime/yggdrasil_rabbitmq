@@ -1,7 +1,7 @@
 defmodule YggdrasilRabbitmq.MixProject do
   use Mix.Project
 
-  @version "4.1.4"
+  @version "4.1.5"
   @root "https://github.com/gmtprime/yggdrasil_rabbitmq"
 
   def project do

@@ -255,11 +255,24 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   @doc false
   def notify(
         message,
-        %{delivery_tag: tag, redelivered: redelivered},
+        %{
+          delivery_tag: tag,
+          redelivered: redelivered,
+          headers: headers,
+          routing_key: routing_key,
+          message_id: message_id
+        },
         %State{channel: channel, chan: chan}
       ) do
     :ok = Basic.ack(chan, tag)
-    Publisher.notify(channel, message)
+
+    metadata = %{
+      message_id: message_id,
+      headers: headers,
+      routing_key: routing_key
+    }
+
+    Publisher.notify(channel, message, metadata)
   rescue
     _ ->
       Basic.reject(chan, tag, requeue: not redelivered)
