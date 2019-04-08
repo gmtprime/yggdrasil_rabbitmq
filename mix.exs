@@ -1,14 +1,15 @@
 defmodule YggdrasilRabbitmq.MixProject do
   use Mix.Project
 
-  @version "4.1.5"
+  @version "5.0.0"
   @root "https://github.com/gmtprime/yggdrasil_rabbitmq"
 
   def project do
     [
+      name: "Yggdrasil for RabbitMQ",
       app: :yggdrasil_rabbitmq,
       version: @version,
-      elixir: "~> 1.6",
+      elixir: "~> 1.8",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       package: package(),
@@ -29,12 +30,10 @@ defmodule YggdrasilRabbitmq.MixProject do
 
   defp deps do
     [
-      {:yggdrasil, "~> 4.1"},
+      {:yggdrasil, "~> 5.0"},
       {:poolboy, "~> 1.5"},
       {:amqp, "~> 1.1"},
-      {:connection, "~> 1.0"},
-      {:uuid, "~> 1.1", only: [:dev, :test]},
-      {:ex_doc, "~> 0.18.4", only: :dev},
+      {:ex_doc, "~> 0.20", only: :dev},
       {:credo, "~> 1.0", only: :dev}
     ]
   end
@@ -61,29 +60,34 @@ defmodule YggdrasilRabbitmq.MixProject do
     [
       source_url: @root,
       source_ref: "v#{@version}",
-      main: Yggdrasil.RabbitMQ.Application,
+      main: "readme",
       formatters: ["html"],
-      groups_for_modules: groups_for_modules()
+      groups_for_modules: groups_for_modules(),
+      extras: ["README.md"]
     ]
   end
 
   defp groups_for_modules do
     [
-      Application: [
-        Yggdrasil.RabbitMQ.Application
-      ],
-      Adapter: [
+      "RabbitMQ Adapter Settings": [
         Yggdrasil.Settings.RabbitMQ,
         Yggdrasil.Adapter.RabbitMQ
       ],
       "Subscriber adapter": [
-        Yggdrasil.Subscriber.Adapter.RabbitMQ,
-        Yggdrasil.Subscriber.Adapter.RabbitMQ.Connection,
-        Yggdrasil.Subscriber.Adapter.RabbitMQ.Generator,
-        Yggdrasil.Subscriber.Adapter.RabbitMQ.Pool
+        Yggdrasil.Subscriber.Adapter.RabbitMQ
       ],
       "Publisher adapter": [
         Yggdrasil.Publisher.Adapter.RabbitMQ
+      ],
+      "RabbitMQ Connection Handling": [
+        Yggdrasil.RabbitMQ.Connection,
+        Yggdrasil.RabbitMQ.Connection.Pool,
+        Yggdrasil.RabbitMQ.Connection.Generator
+      ],
+      "RabbitMQ Channel Handling": [
+        Yggdrasil.RabbitMQ.Client,
+        Yggdrasil.RabbitMQ.Channel,
+        Yggdrasil.RabbitMQ.Channel.Generator
       ]
     ]
   end
