@@ -28,16 +28,16 @@ defmodule Yggdrasil.RabbitMQ.Channel do
   Stops a supervised `channel`. Optionally, receives a stop `reason` (defaults
   to `:normal`) and a `timeout` in milliseconds (defaults to `:infinity`).
   """
-  @spec stop(GenServer.name()) :: :ok
-  @spec stop(GenServer.name(), term()) :: :ok
-  @spec stop(GenServer.name(), term(), :infinity | non_neg_integer()) :: :ok
+  @spec stop(GenServer.server()) :: :ok
+  @spec stop(GenServer.server(), term()) :: :ok
+  @spec stop(GenServer.server(), term(), :infinity | non_neg_integer()) :: :ok
   defdelegate stop(channel, reason \\ :normal, timeout \\ :infinity),
     to: GenServer
 
   @doc """
   Gets the RabbitMQ channel for a supervised `channel`.
   """
-  @spec get(GenServer.name()) :: {:ok, RabbitChan.t()} | {:error, term()}
+  @spec get(GenServer.server()) :: {:ok, RabbitChan.t()} | {:error, term()}
   def get(channel)
 
   def get(channel) do

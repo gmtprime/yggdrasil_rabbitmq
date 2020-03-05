@@ -1,7 +1,7 @@
 defmodule YggdrasilRabbitmq.MixProject do
   use Mix.Project
 
-  @version "5.0.1"
+  @version "5.0.2"
   @root "https://github.com/gmtprime/yggdrasil_rabbitmq"
 
   def project do
@@ -31,10 +31,12 @@ defmodule YggdrasilRabbitmq.MixProject do
   defp deps do
     [
       {:yggdrasil, "~> 5.0"},
+      {:skogsra, "~> 2.2"},
       {:poolboy, "~> 1.5"},
-      {:amqp, "~> 1.2"},
-      {:ex_doc, "~> 0.21", only: :dev},
-      {:credo, "~> 1.1", only: :dev}
+      {:amqp, "~> 1.4"},
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false},
+      {:credo, "~> 1.2", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.0.0-rc.7", only: :dev, runtime: false}
     ]
   end
 
@@ -44,10 +46,11 @@ defmodule YggdrasilRabbitmq.MixProject do
   defp package do
     [
       description: "RabbitMQ adapter for Yggdrasil (pub/sub)",
-      files: ["lib", "mix.exs", "README.md"],
+      files: ["lib", "mix.exs", "README.md", "CHANGELOG.md"],
       maintainers: ["Alexander de Sousa"],
       licenses: ["MIT"],
       links: %{
+        "Changelog" => "#{@root}/blob/master/CHANGELOG.md",
         "Github" => @root
       }
     ]

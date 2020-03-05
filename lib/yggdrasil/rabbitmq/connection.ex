@@ -88,9 +88,9 @@ defmodule Yggdrasil.RabbitMQ.Connection do
 
   @impl true
   def handle_continue(:connect, %State{} = state) do
-    with {:ok, new_state} <- connect(state) do
+    case connect(state) do
+      {:ok, new_state} ->
       {:noreply, new_state}
-    else
       error ->
         {:noreply, state, {:continue, {:backoff, error}}}
     end

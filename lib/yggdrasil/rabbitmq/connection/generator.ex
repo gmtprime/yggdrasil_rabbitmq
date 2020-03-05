@@ -11,7 +11,9 @@ defmodule Yggdrasil.RabbitMQ.Connection.Generator do
   Starts a connection pool generator.
   """
   @spec start_link() :: Supervisor.on_start()
-  @spec start_link(DynamicSupervisor.options()) :: Supervisor.on_start()
+  @spec start_link([
+          DynamicSupervisor.option() | DynamicSupervisor.init_option()
+        ]) :: Supervisor.on_start()
   def start_link(options \\ []) do
     DynamicSupervisor.start_link(__MODULE__, nil, options)
   end
@@ -36,9 +38,10 @@ defmodule Yggdrasil.RabbitMQ.Connection.Generator do
   def with_channel(client, callback \\ &{:ok, &1})
 
   def with_channel(client, callback) do
-    with {:ok, _} <- connect(__MODULE__, client) do
-      Pool.with_channel(client, callback)
-    else
+    case connect(__MODULE__, client) do
+      {:ok, _} ->
+        Pool.with_channel(client, callback)
+
       {:error, {:already_started, _}} ->
         Pool.with_channel(client, callback)
 
