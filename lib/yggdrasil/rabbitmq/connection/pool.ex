@@ -5,6 +5,7 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
   use Supervisor
 
   alias AMQP.Channel, as: RabbitChan
+  alias Yggdrasil.Channel
   alias Yggdrasil.RabbitMQ.Channel.Generator, as: ChannelGen
   alias Yggdrasil.RabbitMQ.Client
   alias Yggdrasil.RabbitMQ.Connection
@@ -35,7 +36,8 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
   some `Supervisor` `options`.
   """
   @spec start_link(Client.t()) :: Supervisor.on_start()
-  @spec start_link(Client.t(), Supervisor.options()) :: Supervisor.on_start()
+  @spec start_link(Client.t(), [Supervisor.option() | Supervisor.init_option()]) ::
+          Supervisor.on_start()
   def start_link(client, options \\ [])
 
   def start_link(%Client{} = client, options) do
@@ -98,6 +100,9 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
+  rescue
+    _ ->
+      :ignore
   end
 
   #########
@@ -111,11 +116,16 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
 
   ##
   # Gets pool size.
+  @spec gen_pool_size(Client.t()) :: integer()
+  defp gen_pool_size(client)
+
   defp gen_pool_size(%Client{tag: :subscriber, namespace: namespace}) do
-    Settings.subscriber_connections!(namespace)
+    {:ok, size} = Settings.subscriber_connections(namespace)
+    size
   end
 
   defp gen_pool_size(%Client{tag: :publisher, namespace: namespace}) do
-    Settings.publisher_connections!(namespace)
+    {:ok, size} = Settings.publisher_connections(namespace)
+    size
   end
 end

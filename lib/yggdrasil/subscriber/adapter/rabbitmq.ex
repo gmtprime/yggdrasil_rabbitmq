@@ -55,6 +55,12 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   defstruct [:channel, :client, :chan]
   alias __MODULE__, as: State
 
+  @type t :: %State{
+          channel: channel :: Channel.t(),
+          client: client :: Client.t(),
+          chan: rabbitmq_channel :: nil | pid()
+        }
+
   ############
   # Client API
 
@@ -149,9 +155,10 @@ defmodule Yggdrasil.Subscriber.Adapter.RabbitMQ do
   end
 
   def handle_continue(:connect, %State{} = state) do
-    with {:ok, new_state} <- connect(state) do
-      {:noreply, new_state}
-    else
+    case connect(state) do
+      {:ok, new_state} ->
+        {:noreply, new_state}
+
       error ->
         {:noreply, state, {:continue, {:backoff, error}}}
     end
