@@ -11,36 +11,6 @@ defmodule Yggdrasil.RabbitMQ.ConnectionTest do
     {:ok, [namespace: namespace]}
   end
 
-  describe "when RabbitMQ is unreachable" do
-    setup %{namespace: namespace} do
-      assert :ok = Yggdrasil.subscribe(name: {Connection, namespace})
-      assert_receive {:Y_CONNECTED, _}
-      assert {:ok, conn} = Connection.start_link(namespace)
-      assert_receive {:Y_EVENT, _, :backing_off}, 500
-      {:ok, [namespace: namespace, conn: conn]}
-    end
-
-    test "connection in state is nil", %{conn: conn} do
-      assert %Connection{} = state = :sys.get_state(conn)
-      assert is_nil(state.conn)
-    end
-
-    test "namespace is set", %{namespace: namespace, conn: conn} do
-      assert %Connection{} = state = :sys.get_state(conn)
-      assert state.namespace == namespace
-    end
-
-    test "backoff is greater than zero", %{conn: conn} do
-      assert %Connection{} = state = :sys.get_state(conn)
-      assert state.backoff > 0
-    end
-
-    test "retries are greater than zero", %{conn: conn} do
-      assert %Connection{} = state = :sys.get_state(conn)
-      assert state.retries > 0
-    end
-  end
-
   describe "when RabbitMQ is reachable" do
     setup do
       assert {:ok, conn} = Connection.start_link(nil)
