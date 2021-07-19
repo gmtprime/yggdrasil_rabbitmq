@@ -23,8 +23,11 @@ erl_crash.dump
 .tool-versions
 
 # PLTs
-priv/plts/skogsra.plt
-priv/plts/skogsra.plt.hash
+priv/plts/yggdrasil_rabbitmq.plt
+priv/plts/yggdrasil_rabbitmq.plt.hash
 
 # Language server
 .elixir_ls
+
+# Lagger log
+/log

@@ -158,7 +158,7 @@ available hex package to your `mix.exs` file e.g:
 
 ```elixir
 def deps do
-  [{:yggdrasil_rabbitmq, "~> 5.0"}]
+  [{:yggdrasil_rabbitmq, "~> 6.0"}]
 end
 ```
 
