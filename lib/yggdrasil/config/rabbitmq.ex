@@ -14,9 +14,6 @@ defmodule Yggdrasil.Config.RabbitMQ do
 
   @envdoc """
   RabbitMQ port. Defaults to `5672`.
-
-      iex> Yggdrasil.Config.RabbitMQ.port()
-      {:ok, 5672}
   """
   app_env :port, :yggdrasil, [:rabbitmq, :port], default: 5672
 
