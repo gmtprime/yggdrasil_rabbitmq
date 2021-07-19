@@ -8,7 +8,7 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   require Logger
 
   alias AMQP.Connection
-  alias Yggdrasil.Settings.RabbitMQ, as: Settings
+  alias Yggdrasil.Config.RabbitMQ, as: Config
 
   @typedoc """
   Namespace for the connection.
@@ -90,7 +90,8 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   def handle_continue(:connect, %State{} = state) do
     case connect(state) do
       {:ok, new_state} ->
-      {:noreply, new_state}
+        {:noreply, new_state}
+
       error ->
         {:noreply, state, {:continue, {:backoff, error}}}
     end
@@ -179,12 +180,12 @@ defmodule Yggdrasil.RabbitMQ.Connection do
 
   def rabbitmq_options(%State{namespace: namespace}) do
     [
-      host: Settings.hostname!(namespace),
-      port: Settings.port!(namespace),
-      username: Settings.username!(namespace),
-      password: Settings.password!(namespace),
-      virtual_host: Settings.virtual_host!(namespace),
-      heartbeat: Settings.heartbeat!(namespace)
+      host: Config.hostname!(namespace),
+      port: Config.port!(namespace),
+      username: Config.username!(namespace),
+      password: Config.password!(namespace),
+      virtual_host: Config.virtual_host!(namespace),
+      heartbeat: Config.heartbeat!(namespace)
     ]
   end
 
@@ -193,8 +194,8 @@ defmodule Yggdrasil.RabbitMQ.Connection do
   def backoff(error, state)
 
   def backoff(error, %State{namespace: namespace, retries: retries} = state) do
-    max_retries = Settings.max_retries!(namespace)
-    slot_size = Settings.slot_size!(namespace)
+    max_retries = Config.max_retries!(namespace)
+    slot_size = Config.slot_size!(namespace)
 
     new_backoff = (2 <<< retries) * Enum.random(1..slot_size) * 1000
     Process.send_after(self(), {:timeout, {:continue, :connect}}, new_backoff)

@@ -6,10 +6,10 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
 
   alias AMQP.Channel, as: RabbitChan
   alias Yggdrasil.Channel
+  alias Yggdrasil.Config.RabbitMQ, as: Config
   alias Yggdrasil.RabbitMQ.Channel.Generator, as: ChannelGen
   alias Yggdrasil.RabbitMQ.Client
   alias Yggdrasil.RabbitMQ.Connection
-  alias Yggdrasil.Settings.RabbitMQ, as: Settings
 
   @typedoc """
   Callback for running functions using RabbitMQ channels.
@@ -120,12 +120,12 @@ defmodule Yggdrasil.RabbitMQ.Connection.Pool do
   defp gen_pool_size(client)
 
   defp gen_pool_size(%Client{tag: :subscriber, namespace: namespace}) do
-    {:ok, size} = Settings.subscriber_connections(namespace)
+    {:ok, size} = Config.subscriber_connections(namespace)
     size
   end
 
   defp gen_pool_size(%Client{tag: :publisher, namespace: namespace}) do
-    {:ok, size} = Settings.publisher_connections(namespace)
+    {:ok, size} = Config.publisher_connections(namespace)
     size
   end
 end

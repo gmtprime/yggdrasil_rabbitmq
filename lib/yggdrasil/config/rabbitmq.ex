@@ -1,6 +1,6 @@
-defmodule Yggdrasil.Settings.RabbitMQ do
+defmodule Yggdrasil.Config.RabbitMQ do
   @moduledoc """
-  This module defines the available settings for RabbitMQ in Yggdrasil.
+  This module defines the available config variables for RabbitMQ in Yggdrasil.
   """
   use Skogsra
 
@@ -15,7 +15,7 @@ defmodule Yggdrasil.Settings.RabbitMQ do
   @envdoc """
   RabbitMQ port. Defaults to `5672`.
 
-      iex> Yggdrasil.Settings.RabbitMQ.port()
+      iex> Yggdrasil.Config.RabbitMQ.port()
       {:ok, 5672}
   """
   app_env :port, :yggdrasil, [:rabbitmq, :port], default: 5672
@@ -23,7 +23,7 @@ defmodule Yggdrasil.Settings.RabbitMQ do
   @envdoc """
   RabbitMQ username. Defaults to `"guest"`.
 
-      iex> Yggdrasil.Settings.RabbitMQ.username()
+      iex> Yggdrasil.Config.RabbitMQ.username()
       {:ok, "guest"}
   """
   app_env :username, :yggdrasil, [:rabbitmq, :username], default: "guest"
@@ -31,7 +31,7 @@ defmodule Yggdrasil.Settings.RabbitMQ do
   @envdoc """
   RabbitMQ password. Defaults to `"guest"`.
 
-      iex> Yggdrasil.Settings.RabbitMQ.password()
+      iex> Yggdrasil.Config.RabbitMQ.password()
       {:ok, "guest"}
   """
   app_env :password, :yggdrasil, [:rabbitmq, :password], default: "guest"
@@ -39,7 +39,7 @@ defmodule Yggdrasil.Settings.RabbitMQ do
   @envdoc """
   RabbitMQ virtual host. Defaults to `"/"`.
 
-      iex> Yggdrasil.Settings.RabbitMQ.virtual_host()
+      iex> Yggdrasil.Config.RabbitMQ.virtual_host()
       {:ok, "/"}
   """
   app_env :virtual_host, :yggdrasil, [:rabbitmq, :virtual_host], default: "/"
@@ -47,7 +47,7 @@ defmodule Yggdrasil.Settings.RabbitMQ do
   @envdoc """
   RabbitMQ heartbeat. Defaults to `10` seconds.
 
-      iex> Yggdrasil.Settings.RabbitMQ.heartbeat()
+      iex> Yggdrasil.Config.RabbitMQ.heartbeat()
       {:ok, 10}
   """
   app_env :heartbeat, :yggdrasil, [:rabbitmq, :heartbeat], default: 10
@@ -62,7 +62,7 @@ defmodule Yggdrasil.Settings.RabbitMQ do
   when `retries <= MAX_RETRIES` and `slot` is given by the configuration
   variable `#{__MODULE__}.slot_size/0` (defaults to `10` secs).
 
-      iex> Yggdrasil.Settings.RabbitMQ.max_retries()
+      iex> Yggdrasil.Config.RabbitMQ.max_retries()
       {:ok, 3}
   """
   app_env :max_retries, :yggdrasil, [:rabbitmq, :max_retries], default: 3
@@ -70,7 +70,7 @@ defmodule Yggdrasil.Settings.RabbitMQ do
   @envdoc """
   RabbitMQ slot size for the backoff algorithm. Defaults to `10`.
 
-      iex> Yggdrasil.Settings.RabbitMQ.slot_size()
+      iex> Yggdrasil.Config.RabbitMQ.slot_size()
       {:ok, 10}
   """
   app_env :slot_size, :yggdrasil, [:rabbitmq, :slot_size], default: 10
@@ -78,7 +78,7 @@ defmodule Yggdrasil.Settings.RabbitMQ do
   @envdoc """
   RabbitMQ amount of publisher connections.
 
-      iex> Yggdrasil.Settings.RabbitMQ.publisher_connections()
+      iex> Yggdrasil.Config.RabbitMQ.publisher_connections()
       {:ok, 1}
   """
   app_env :publisher_connections,
@@ -89,7 +89,7 @@ defmodule Yggdrasil.Settings.RabbitMQ do
   @envdoc """
   RabbitMQ amount of subscriber connections.
 
-      iex> Yggdrasil.Settings.RabbitMQ.subscriber_connections()
+      iex> Yggdrasil.Config.RabbitMQ.subscriber_connections()
       {:ok, 1}
   """
   app_env :subscriber_connections,
